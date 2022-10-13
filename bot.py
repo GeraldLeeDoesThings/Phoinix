@@ -3,6 +3,8 @@ import datetime
 import discord
 import discord.app_commands as app_commands
 import requests
+import threading
+import subprocess
 from typing import *
 
 
@@ -42,7 +44,7 @@ class PhoinixBot(discord.Client):
                 break
         if bad_message:
             asyncio.create_task(m.reply(
-                "Please ensure messages in this channel mention at least one of DRS/BA Learners/Reclears. Your message will be deleted in 10 seconds.",
+                "Please ensure messages in this channel mention at least one of DRS/BA Learners/Reclears. Your message will be deleted in 30 seconds.",
                 delete_after=30
             ))
             asyncio.create_task(m.delete(delay=30))
@@ -74,6 +76,7 @@ class PhoinixBot(discord.Client):
         self.PEBE = self.get_guild(1028110201968132116)
         print(self.PEBE)
         await self.delete_untagged_messages()
+        self.aloop = asyncio.get_running_loop()
 
     async def on_message(self, message: discord.Message):
         if message.channel.id == CHANNEL_ID_MAP["ba-recruiting"]:
@@ -87,10 +90,31 @@ class PhoinixBot(discord.Client):
                 [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]]
             )
 
+    async def impersonate(self, channel_id, message):
+        maybe_channel = self.get_channel(channel_id)
+        if maybe_channel is not None:
+            await maybe_channel.send(message)
+
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = PhoinixBot(intents=intents)
+
+def run_console(client: PhoinixBot):
+    channel_id = None
+    pipe = subprocess.Popen(["python", "inputloop.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    while pipe.poll() is None:
+        line = pipe.stdout.readline().decode().rstrip('\r\n')
+        if line.startswith("send"):
+            asyncio.run_coroutine_threadsafe(client.impersonate(channel_id, line[5:]), client.aloop)
+        elif line.startswith("join"):
+            try:
+                channel_id = int(line[5:])
+            except:
+                pass
+
+threading.Thread(target=run_console, args=(bot,), daemon=True).start()
+
 with open("token", "r") as token:
     bot.run(token.read())
