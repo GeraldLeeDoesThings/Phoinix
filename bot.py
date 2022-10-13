@@ -3,21 +3,22 @@ import datetime
 import discord
 import discord.app_commands as app_commands
 import requests
-import threading
-import subprocess
 from typing import *
 
 
 CHANNEL_ID_MAP = {
     "ba-recruiting": 1029102392601497682,
     "drs-recruiting": 1029102476156215307,
+    "command": 275741052344860672
 }
 
 ROLE_ID_MAP = {
     "BA Learning": 1029114312624705576,
     "BA Reclear": 1029114561363705936,
+    "BA Lead": 1029164496431886337,
     "DRS Learning": 1029114229845917776,
     "DRS Reclear": 1029083391208984597,
+    "DRS Lead": 1029164459018698802,
     "Admin": 1028878560536035428,
     "Moderator": 1029076383542018108,
 }
@@ -26,6 +27,10 @@ GRACE_TIME = datetime.datetime.fromisoformat("2022-10-10 23:16:42.262194+00:00")
 
 
 class PhoinixBot(discord.Client):
+
+    def __init__(self, *, intents: discord.Intents, **options: Any):
+        self.target_channel_id = None
+        super().__init__(intents=intents, **options)
 
     async def validate_message_tags(self, m: discord.Message, role_ids: List[int]):
 
@@ -70,7 +75,6 @@ class PhoinixBot(discord.Client):
                 m, [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]]
             )
 
-
     async def on_ready(self):
         print("Nya")
         self.PEBE = self.get_guild(1028110201968132116)
@@ -79,16 +83,28 @@ class PhoinixBot(discord.Client):
         self.aloop = asyncio.get_running_loop()
 
     async def on_message(self, message: discord.Message):
-        if message.channel.id == CHANNEL_ID_MAP["ba-recruiting"]:
+        id = message.channel.id
+        if id == CHANNEL_ID_MAP["ba-recruiting"]:
             await self.validate_message_tags(
                 message,
                 [ROLE_ID_MAP["BA Learning"], ROLE_ID_MAP["BA Reclear"]]
             )
-        elif message.channel.id == CHANNEL_ID_MAP["drs-recruiting"]:
+        elif id == CHANNEL_ID_MAP["drs-recruiting"]:
             await self.validate_message_tags(
                 message,
                 [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]]
             )
+        elif id == CHANNEL_ID_MAP["command"]:
+            await self.parse_console_command(message.content)
+
+    async def parse_console_command(self, command):
+        if command.startswith("send"):
+            await self.impersonate(self.target_channel_id, command[5:])
+        elif command.startswith("join"):
+            try:
+                self.target_channel_id = int(command[5:])
+            except:
+                pass
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
@@ -100,21 +116,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = PhoinixBot(intents=intents)
-
-def run_console(client: PhoinixBot):
-    channel_id = None
-    pipe = subprocess.Popen(["python", "inputloop.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    while pipe.poll() is None:
-        line = pipe.stdout.readline().decode().rstrip('\r\n')
-        if line.startswith("send"):
-            asyncio.run_coroutine_threadsafe(client.impersonate(channel_id, line[5:]), client.aloop)
-        elif line.startswith("join"):
-            try:
-                channel_id = int(line[5:])
-            except:
-                pass
-
-threading.Thread(target=run_console, args=(bot,), daemon=True).start()
 
 with open("token", "r") as token:
     bot.run(token.read())
