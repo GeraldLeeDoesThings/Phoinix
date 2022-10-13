@@ -1,4 +1,5 @@
 import asyncio
+from const import *
 import datetime
 import discord
 import discord.app_commands as app_commands
@@ -6,38 +7,13 @@ import re
 import requests
 import threading
 from typing import *
-
-
-CHANNEL_ID_MAP = {
-    "ba-recruiting": 1029102392601497682,
-    "drs-recruiting": 1029102476156215307,
-    "command": 275741052344860672,
-}
-
-ROLE_ID_MAP = {
-    "BA Learning": 1029114312624705576,
-    "BA Reclear": 1029114561363705936,
-    "BA Lead": 1029164496431886337,
-    "DRS Learning": 1029114229845917776,
-    "DRS Reclear": 1029083391208984597,
-    "DRS Lead": 1029164459018698802,
-    "Admin": 1028878560536035428,
-    "Moderator": 1029076383542018108,
-}
-
-GRACE_TIME = datetime.datetime.fromisoformat("2022-10-10 23:16:42.262194+00:00")
+from utils import *
 
 
 class PhoinixBot(discord.Client):
     def __init__(self, *, intents: discord.Intents, **options: Any):
         self.target_channel_id = None
         super().__init__(intents=intents, **options)
-
-    def extract_timestamps(self, content: str) -> List[datetime.date]:
-        return [
-            datetime.date.fromtimestamp(stamp)
-            for stamp in set(int(val) for val in re.findall("<t:(\d+):\w>", content))
-        ]
 
     async def validate_message_tags(self, m: discord.Message, role_ids: List[int]):
 
@@ -63,6 +39,17 @@ class PhoinixBot(discord.Client):
             )
             asyncio.create_task(m.delete(delay=30))
 
+    def fetch_member(self, id: int) -> Optional[discord.Member]:
+        try:
+            return await self.PEBE.fetch_member(id)
+        except discord.Forbidden:
+            print("Insufficient permission to read members! Please fix :(")
+        except discord.NotFound:
+            print(f"User with ID {id} could not be found! Did they leave?")
+        except discord.HTTPException:
+            pass
+        return None
+
     async def delete_untagged_messages(self):
         ba = self.get_channel(CHANNEL_ID_MAP["ba-recruiting"])
         drs = self.get_channel(CHANNEL_ID_MAP["drs-recruiting"])
@@ -73,16 +60,19 @@ class PhoinixBot(discord.Client):
         async for message in ba_messages:
             # This is dumb and only here for autocomplete
             m = message  # type: discord.Message
-            print(m.content)
-            await self.validate_message_tags(
-                m, [ROLE_ID_MAP["BA Learning"], ROLE_ID_MAP["BA Reclear"]]
+            await validate_message_tags(
+                m,
+                self.fetch_member(m.author.id),
+                [ROLE_ID_MAP["BA Learning"], ROLE_ID_MAP["BA Reclear"]],
             )
 
         async for message in drs_messages:
             # Same thing here
             m = message  # type: discord.Message
-            await self.validate_message_tags(
-                m, [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]]
+            await validate_message_tags(
+                m,
+                self.fetch_member(m.author.id),
+                [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]],
             )
 
     async def on_ready(self):
