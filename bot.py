@@ -2,14 +2,16 @@ import asyncio
 import datetime
 import discord
 import discord.app_commands as app_commands
+import re
 import requests
+import threading
 from typing import *
 
 
 CHANNEL_ID_MAP = {
     "ba-recruiting": 1029102392601497682,
     "drs-recruiting": 1029102476156215307,
-    "command": 275741052344860672
+    "command": 275741052344860672,
 }
 
 ROLE_ID_MAP = {
@@ -27,10 +29,15 @@ GRACE_TIME = datetime.datetime.fromisoformat("2022-10-10 23:16:42.262194+00:00")
 
 
 class PhoinixBot(discord.Client):
-
     def __init__(self, *, intents: discord.Intents, **options: Any):
         self.target_channel_id = None
         super().__init__(intents=intents, **options)
+
+    def extract_timestamps(self, content: str) -> List[datetime.date]:
+        return [
+            datetime.date.fromtimestamp(stamp)
+            for stamp in set(int(val) for val in re.findall("<t:(\d+):\w>", content))
+        ]
 
     async def validate_message_tags(self, m: discord.Message, role_ids: List[int]):
 
@@ -48,10 +55,12 @@ class PhoinixBot(discord.Client):
                 bad_message = False
                 break
         if bad_message:
-            asyncio.create_task(m.reply(
-                "Please ensure messages in this channel mention at least one of DRS/BA Learners/Reclears. Your message will be deleted in 30 seconds.",
-                delete_after=30
-            ))
+            asyncio.create_task(
+                m.reply(
+                    "Please ensure messages in this channel mention at least one of DRS/BA Learners/Reclears. Your message will be deleted in 30 seconds.",
+                    delete_after=30,
+                )
+            )
             asyncio.create_task(m.delete(delay=30))
 
     async def delete_untagged_messages(self):
@@ -64,6 +73,7 @@ class PhoinixBot(discord.Client):
         async for message in ba_messages:
             # This is dumb and only here for autocomplete
             m = message  # type: discord.Message
+            print(m.content)
             await self.validate_message_tags(
                 m, [ROLE_ID_MAP["BA Learning"], ROLE_ID_MAP["BA Reclear"]]
             )
@@ -86,13 +96,11 @@ class PhoinixBot(discord.Client):
         id = message.channel.id
         if id == CHANNEL_ID_MAP["ba-recruiting"]:
             await self.validate_message_tags(
-                message,
-                [ROLE_ID_MAP["BA Learning"], ROLE_ID_MAP["BA Reclear"]]
+                message, [ROLE_ID_MAP["BA Learning"], ROLE_ID_MAP["BA Reclear"]]
             )
         elif id == CHANNEL_ID_MAP["drs-recruiting"]:
             await self.validate_message_tags(
-                message,
-                [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]]
+                message, [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]]
             )
         elif id == CHANNEL_ID_MAP["command"]:
             await self.parse_console_command(message.content)
