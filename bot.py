@@ -15,6 +15,20 @@ class PhoinixBot(discord.Client):
         self.target_channel_id = None
         super().__init__(intents=intents, **options)
 
+    async def delete_recruitment_post_and_related(self, rpost: discord.Message):
+        times = extract_hammertime_timestamps(rpost.content)
+        if len(times) == 0:
+            # No timestamps, just delete the post
+            await rpost.delete()
+        else:
+            # Has timestamps, delete the authors messages from those days
+            for timestamp in times:
+                await rpost.channel.purge(
+                    before=timestamp + HALF_DAY,
+                    after=timestamp - HALF_DAY,
+                    reason="Recruitment post cleanup",
+                )
+
     async def validate_message_tags(self, m: discord.Message, role_ids: List[int]):
 
         member = await self.PEBE.fetch_member(m.author.id)

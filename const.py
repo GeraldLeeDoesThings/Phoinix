@@ -19,3 +19,4 @@ ROLE_ID_MAP = {
 }
 
 GRACE_TIME = datetime.datetime.fromisoformat("2022-10-10 23:16:42.262194+00:00")
+HALF_DAY = datetime.timedelta(days=0.5)

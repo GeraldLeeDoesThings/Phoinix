@@ -1,14 +1,14 @@
 import asyncio
 from const import *
-import datetime
+from datetime import datetime
 import discord
 import re
 from typing import *
 
 
-def extract_hammertime_timestamps(content: str) -> List[datetime.date]:
+def extract_hammertime_timestamps(content: str) -> List[datetime]:
     return [
-        datetime.date.fromtimestamp(stamp)
+        datetime.fromtimestamp(stamp)
         for stamp in set(int(val) for val in re.findall("<t:(\d+):\w>", content))
     ]
 
