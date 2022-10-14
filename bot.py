@@ -238,7 +238,9 @@ async def verify(ctx: discord.ApplicationContext):
         ]  # type: bs4.element.Tag
 
         if token in str(profile.string):
-            ACHIEVEMENT_BASE_URL = f"{LODESTONE_BASE_URL}{cid}{LODESTONE_ACHIEVEMENT_BASE_URL}"
+            ACHIEVEMENT_BASE_URL = (
+                f"{LODESTONE_BASE_URL}{cid}{LODESTONE_ACHIEVEMENT_BASE_URL}"
+            )
             await ctx.defer(ephemeral=True)
             drs_req = requests.get(
                 f"{ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['DRS Clear']}/"
