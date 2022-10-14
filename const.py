@@ -5,6 +5,7 @@ CHANNEL_ID_MAP = {
     "ba-recruiting": 1029102392601497682,
     "drs-recruiting": 1029102476156215307,
     "command": 275741052344860672,
+    "roles": 1029906434877558886,
 }
 
 ROLE_ID_MAP = {
