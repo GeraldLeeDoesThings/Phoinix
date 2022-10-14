@@ -1,8 +1,8 @@
 import asyncio
+import bs4
 from const import *
 import datetime
 import discord
-import discord.app_commands as app_commands
 import re
 import requests
 import secrets
@@ -11,8 +11,9 @@ from typing import *
 from utils import *
 
 
-class PhoinixBot(discord.Client):
+class PhoinixBot(discord.Bot):
     def __init__(self, *, intents: discord.Intents, **options: Any):
+        self.PEBE = None  # type: discord.Guild
         self.target_channel_id = None
         # Maps Message ID -> (Emoji -> Role ID)
         self.reaction_bindings = (
@@ -35,7 +36,6 @@ class PhoinixBot(discord.Client):
                 )
 
     async def validate_message_tags(self, m: discord.Message, role_ids: List[int]):
-
         member = await self.PEBE.fetch_member(m.author.id)
         if member is None:
             print(f"FUCKED ID: {m.author.id}")
@@ -52,7 +52,9 @@ class PhoinixBot(discord.Client):
         if bad_message:
             asyncio.create_task(
                 m.reply(
-                    "Please ensure messages in this channel mention at least one of DRS/BA Learners/Reclears. Your message will be deleted in 30 seconds.",
+                    "Please ensure messages in this channel mention at least one of"
+                    " DRS/BA Learners/Reclears. Your message will be deleted in 30"
+                    " seconds.",
                     delete_after=30,
                 )
             )
@@ -183,10 +185,137 @@ class PhoinixBot(discord.Client):
             await maybe_channel.send(message)
 
 
-intents = discord.Intents.default()
-intents.message_content = True
+intents = discord.Intents.all()
 
 bot = PhoinixBot(intents=intents)
+# Maps User ID (Discord) -> (Token, Character ID (FFXIV))
+verification_map = {}  # type: Dict[int, Tuple[str, int]]
+
+
+@bot.slash_command(
+    description=(
+        "Verifies that you have cleared DRS/BA via the Lodestone. Ensure your"
+        " acheivements are public."
+    )
+)
+@discord.option(
+    "char_id",
+    description=f"EX: {LODESTONE_BASE_URL}12345678/ would input 12345678",
+)
+async def verifycharacter(ctx: discord.ApplicationContext, char_id: int):
+    if verification_map.get(ctx.author.id, None) is not None:
+        token, _ = verification_map[ctx.author.id]
+        await ctx.send_response(
+            f"Add {token} to your Character Profile at"
+            f" {LODESTONE_BASE_URL}{char_id}/\nThen use the /verify command. Make sure"
+            " your acheivements are public!",
+            ephemeral=True,
+        )
+    else:
+        token = secrets.token_urlsafe(8)
+        verification_map[ctx.author.id] = (token, char_id)
+        await ctx.send_response(
+            f"Add {token} to your Character Profile at"
+            f" {LODESTONE_BASE_URL}{char_id}/\nThen use the /verify command. Make sure"
+            " your acheivements are public!",
+            ephemeral=True,
+        )
+
+
+@bot.slash_command(
+    description=(
+        "Verifies that you have cleared DRS/BA via the Lodestone. Use after verifying"
+        " with an id."
+    )
+)
+async def verify(ctx: discord.ApplicationContext):
+    if verification_map.get(ctx.author.id, None) is not None:
+        token, cid = verification_map[ctx.author.id]
+        profile = bs4.BeautifulSoup(
+            requests.get(f"{LODESTONE_BASE_URL}{cid}").content.decode(), "html.parser"
+        ).find_all("div", "character__selfintroduction")[
+            0
+        ]  # type: bs4.element.Tag
+
+        if token in str(profile.string):
+            drs_req = requests.get(
+                f"{LODESTONE_ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['DRS Clear']}/"
+            )
+            if drs_req.status_code == 404:
+                await ctx.send_response(
+                    "Your achievements are not set to public! Set them to public then"
+                    " run /verify again!",
+                    ephemeral=True,
+                )
+                return
+
+            cleared_drs = (
+                len(
+                    bs4.BeautifulSoup(drs_req.content.decode(), "html.parser").find_all(
+                        "div",
+                        "entry__achievement__view entry__achievement__view--complete",
+                    )
+                )
+                > 0
+            )
+
+            ba_req = requests.get(
+                f"{LODESTONE_ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['BA Clear']}/"
+            )
+
+            cleared_ba = (
+                len(
+                    bs4.BeautifulSoup(ba_req.content.decode(), "html.parser").find_all(
+                        "div",
+                        "entry__achievement__view entry__achievement__view--complete",
+                    )
+                )
+                > 0
+            )
+
+            if cleared_drs or cleared_ba:
+                try:
+                    member = await bot.PEBE.fetch_member(ctx.author.id)
+
+                    roles_to_add = []
+                    if cleared_ba:
+                        roles_to_add.append(discord.Object(ROLE_ID_MAP["Cleared BA"]))
+                    if cleared_drs:
+                        roles_to_add.append(discord.Object(ROLE_ID_MAP["Cleared DRS"]))
+
+                    await member.add_roles(*roles_to_add, reason="Verified clear")
+
+                    await ctx.send_response("Roles added!", ephemeral=True)
+
+                except discord.NotFound:
+                    await ctx.send_response(
+                        "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
+                    )
+                except discord.HTTPException:
+                    await ctx.send_response(
+                        "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
+                    )
+            else:
+                await ctx.send_response(
+                    "No roles to add. Go clear DRS or BA then verify again!",
+                    ephemeral=True,
+                )
+        else:
+            await ctx.send_response(
+                f"Could not find {token} in your character profile. Make sure it is"
+                " there, then try again.",
+                ephemeral=True,
+            )
+    else:
+        await ctx.send_response(
+            "First, find your character on the Lodestone. The link will look something"
+            f" like: {LODESTONE_BASE_URL}12345678/\nCopy the 8 digits at the end of the"
+            " URL, and use /verifycharacter NUMBERS\nIt will provide you with some"
+            " text to put in your Character Profile.\nAfter doing that, make sure your"
+            " acheivements are public, and then call /verify again.",
+            ephemeral=True,
+        )
+
 
 with open("token", "r") as token:
     bot.run(token.read())

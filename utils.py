@@ -16,7 +16,6 @@ def extract_hammertime_timestamps(content: str) -> List[datetime]:
 async def validate_message_tags(
     m: discord.Message, member: Optional[discord.Member], role_ids: List[int]
 ):
-
     if member is None:
         print(f"FUCKED ID: {m.author.id}")
     else:
@@ -32,7 +31,8 @@ async def validate_message_tags(
     if bad_message:
         asyncio.create_task(
             m.reply(
-                "Please ensure messages in this channel mention at least one of DRS/BA Learners/Reclears. Your message will be deleted in 30 seconds.",
+                "Please ensure messages in this channel mention at least one of DRS/BA"
+                " Learners/Reclears. Your message will be deleted in 30 seconds.",
                 delete_after=30,
             )
         )
