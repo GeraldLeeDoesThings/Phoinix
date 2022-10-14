@@ -238,11 +238,13 @@ async def verify(ctx: discord.ApplicationContext):
         ]  # type: bs4.element.Tag
 
         if token in str(profile.string):
+            ACHIEVEMENT_BASE_URL = f"{LODESTONE_BASE_URL}{cid}{LODESTONE_ACHIEVEMENT_BASE_URL}"
+            await ctx.defer(ephemeral=True)
             drs_req = requests.get(
-                f"{LODESTONE_ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['DRS Clear']}/"
+                f"{ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['DRS Clear']}/"
             )
             if drs_req.status_code == 404:
-                await ctx.send_response(
+                await ctx.send_followup(
                     "Your achievements are not set to public! Set them to public then"
                     " run /verify again!",
                     ephemeral=True,
@@ -260,7 +262,7 @@ async def verify(ctx: discord.ApplicationContext):
             )
 
             ba_req = requests.get(
-                f"{LODESTONE_ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['BA Clear']}/"
+                f"{ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['BA Clear']}/"
             )
 
             cleared_ba = (
@@ -285,18 +287,18 @@ async def verify(ctx: discord.ApplicationContext):
 
                     await member.add_roles(*roles_to_add, reason="Verified clear")
 
-                    await ctx.send_response("Roles added!", ephemeral=True)
+                    await ctx.send_followup("Roles added!", ephemeral=True)
 
                 except discord.NotFound:
-                    await ctx.send_response(
+                    await ctx.send_followup(
                         "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
                     )
                 except discord.HTTPException:
-                    await ctx.send_response(
+                    await ctx.send_followup(
                         "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
                     )
             else:
-                await ctx.send_response(
+                await ctx.send_followup(
                     "No roles to add. Go clear DRS or BA then verify again!",
                     ephemeral=True,
                 )

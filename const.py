@@ -27,7 +27,7 @@ ACHIEVEMENT_ID_MAP = {
 }
 
 LODESTONE_BASE_URL = "https://na.finalfantasyxiv.com/lodestone/character/"
-LODESTONE_ACHIEVEMENT_BASE_URL = f"{LODESTONE_BASE_URL}achievement/detail/"
+LODESTONE_ACHIEVEMENT_BASE_URL = f"/achievement/detail/"
 
 GRACE_TIME = datetime.datetime.fromisoformat("2022-10-10 23:16:42.262194+00:00")
 HALF_DAY = datetime.timedelta(days=0.5)
