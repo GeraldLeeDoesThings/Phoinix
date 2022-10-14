@@ -5,6 +5,7 @@ import discord
 import discord.app_commands as app_commands
 import re
 import requests
+import secrets
 import threading
 from typing import *
 from utils import *
@@ -14,7 +15,9 @@ class PhoinixBot(discord.Client):
     def __init__(self, *, intents: discord.Intents, **options: Any):
         self.target_channel_id = None
         # Maps Message ID -> (Emoji -> Role ID)
-        self.reaction_bindings = {}  # type: Mapping[int, Mapping[discord.PartialEmoji, int]]
+        self.reaction_bindings = (
+            {}
+        )  # type: Mapping[int, Mapping[discord.PartialEmoji, int]]
         super().__init__(intents=intents, **options)
 
     async def delete_recruitment_post_and_related(self, rpost: discord.Message):
@@ -81,7 +84,9 @@ class PhoinixBot(discord.Client):
                         except:
                             pass  # Nobody cares if this fails
             except discord.NotFound:
-                print("Whoever posted the role react message is gone! Someone repost it!")
+                print(
+                    "Whoever posted the role react message is gone! Someone repost it!"
+                )
 
     async def delete_untagged_messages(self):
         ba = self.get_channel(CHANNEL_ID_MAP["ba-recruiting"])
@@ -142,7 +147,9 @@ class PhoinixBot(discord.Client):
         if message_bindings is not None:
             role_id = message_bindings.get(payload.emoji, None)
             if role_id is not None:
-                await payload.member.add_roles(discord.Object(role_id), reason="Reaction")
+                await payload.member.add_roles(
+                    discord.Object(role_id), reason="Reaction"
+                )
 
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.user.id:
@@ -153,7 +160,9 @@ class PhoinixBot(discord.Client):
             if role_id is not None:
                 try:
                     member = await self.PEBE.fetch_member(payload.user_id)
-                    await member.remove_roles(discord.Object(role_id), reason="Reaction")
+                    await member.remove_roles(
+                        discord.Object(role_id), reason="Reaction"
+                    )
                 except discord.NotFound:
                     pass
                 except discord.HTTPException:

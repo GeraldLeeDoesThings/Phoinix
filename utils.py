@@ -40,4 +40,9 @@ async def validate_message_tags(
 
 
 def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int]]:
-    return [(discord.PartialEmoji.from_str(binding[0]), int(binding[1])) for binding in re.findall("(<a?:[a-zA-Z_]+:\d+>)\s+= [a-zA-z ]+ <@&(\d+)>", content)]
+    return [
+        (discord.PartialEmoji.from_str(binding[0]), int(binding[1]))
+        for binding in re.findall(
+            "(<a?:[a-zA-Z_]+:\d+>)\s+= [a-zA-z ]+ <@&(\d+)>", content
+        )
+    ]
