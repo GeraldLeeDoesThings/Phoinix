@@ -1,4 +1,3 @@
-import aiostream
 import asyncio
 import bs4
 from const import *
@@ -248,14 +247,15 @@ async def verify(ctx: discord.ApplicationContext):
         token, cid = verification_map[ctx.author.id]
         try:
             profile = bs4.BeautifulSoup(
-                requests.get(f"{LODESTONE_BASE_URL}{cid}").content.decode(), "html.parser"
+                requests.get(f"{LODESTONE_BASE_URL}{cid}").content.decode(),
+                "html.parser",
             ).find_all("div", "character__selfintroduction")[
                 0
             ]  # type: bs4.element.Tag
         except IndexError:
             await ctx.send_followup(
                 f"Could not find a character profile at: {LODESTONE_BASE_URL}{cid}",
-                ephemeral=True
+                ephemeral=True,
             )
             return
 
