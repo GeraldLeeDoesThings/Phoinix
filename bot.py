@@ -1,14 +1,19 @@
+import aiostream
 import asyncio
 import bs4
 from const import *
 import datetime
 import discord
+import json
 import re
 import requests
 import secrets
 import threading
 from typing import *
 from utils import *
+
+# Maps User ID (Discord) -> (Token, Character ID (FFXIV))
+verification_map = {}  # type: Dict[int, Tuple[str, int]]
 
 
 class PhoinixBot(discord.Bot):
@@ -72,23 +77,27 @@ class PhoinixBot(discord.Bot):
         return None
 
     async def compute_reaction_bindings(self):
-        messages = self.PEBE.get_channel(CHANNEL_ID_MAP["roles"]).history()
+        message_sets = [
+            self.PEBE.get_channel(CHANNEL_ID_MAP["roles"]).history(),
+            self.PEBE.get_channel(CHANNEL_ID_MAP["rules"]).history(),
+        ]
         self.reaction_bindings = {}
-        async for message in messages:
-            try:
-                author = await self.PEBE.fetch_member(message.author.id)
-                if author.get_role(ROLE_ID_MAP["Admin"]) is not None:
-                    self.reaction_bindings[message.id] = {}
-                    for emoji, role_id in extract_react_bindings(message.content):
-                        self.reaction_bindings[message.id][emoji] = role_id
-                        try:
-                            await message.add_reaction(emoji)
-                        except:
-                            pass  # Nobody cares if this fails
-            except discord.NotFound:
-                print(
-                    "Whoever posted the role react message is gone! Someone repost it!"
-                )
+        for messages in message_sets:
+            async for message in messages:
+                try:
+                    author = await self.PEBE.fetch_member(message.author.id)
+                    if author.get_role(ROLE_ID_MAP["Admin"]) is not None:
+                        self.reaction_bindings[message.id] = {}
+                        for emoji, role_id in extract_react_bindings(message.content):
+                            self.reaction_bindings[message.id][emoji] = role_id
+                            try:
+                                await message.add_reaction(emoji)
+                            except:
+                                pass  # Nobody cares if this fails
+                except discord.NotFound:
+                    print(
+                        "Whoever posted the role react message is gone! Someone repost it!"
+                    )
 
     async def delete_untagged_messages(self):
         ba = self.get_channel(CHANNEL_ID_MAP["ba-recruiting"])
@@ -178,6 +187,9 @@ class PhoinixBot(discord.Bot):
                 self.target_channel_id = int(command[5:])
             except:
                 pass
+        elif command.startswith("save"):
+            with open("verification_map.json", "w") as dumpfile:
+                json.dump(verification_map, dumpfile, indent=4)
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
@@ -188,14 +200,12 @@ class PhoinixBot(discord.Bot):
 intents = discord.Intents.all()
 
 bot = PhoinixBot(intents=intents)
-# Maps User ID (Discord) -> (Token, Character ID (FFXIV))
-verification_map = {}  # type: Dict[int, Tuple[str, int]]
 
 
 @bot.slash_command(
     description=(
         "Verifies that you have cleared DRS/BA via the Lodestone. Ensure your"
-        " acheivements are public."
+        " achievements are public."
     )
 )
 @discord.option(
@@ -204,22 +214,26 @@ verification_map = {}  # type: Dict[int, Tuple[str, int]]
 )
 async def verifycharacter(ctx: discord.ApplicationContext, char_id: int):
     if verification_map.get(ctx.author.id, None) is not None:
-        token, _ = verification_map[ctx.author.id]
-        await ctx.send_response(
-            f"Add {token} to your Character Profile at"
-            f" {LODESTONE_BASE_URL}{char_id}/\nThen use the /verify command. Make sure"
-            " your acheivements are public!",
-            ephemeral=True,
-        )
+        token, cid = verification_map[ctx.author.id]
+        if cid == char_id:
+            await ctx.send_response(
+                f"Add {token} to your Character Profile at"
+                f" https://na.finalfantasyxiv.com/lodestone/my/setting/profile/\nThen use the /verify command. Make sure"
+                " your achievements are public!",
+                ephemeral=True,
+            )
+            return
+        else:
+            token = secrets.token_urlsafe(8)
     else:
         token = secrets.token_urlsafe(8)
-        verification_map[ctx.author.id] = (token, char_id)
-        await ctx.send_response(
-            f"Add {token} to your Character Profile at"
-            f" {LODESTONE_BASE_URL}{char_id}/\nThen use the /verify command. Make sure"
-            " your acheivements are public!",
-            ephemeral=True,
-        )
+    verification_map[ctx.author.id] = (token, char_id)
+    await ctx.send_response(
+        f"Add {token} to your Character Profile at"
+        f" https://na.finalfantasyxiv.com/lodestone/my/setting/profile/\nThen use the /verify command. Make sure"
+        " your achievements are public!",
+        ephemeral=True,
+    )
 
 
 @bot.slash_command(
@@ -230,18 +244,25 @@ async def verifycharacter(ctx: discord.ApplicationContext, char_id: int):
 )
 async def verify(ctx: discord.ApplicationContext):
     if verification_map.get(ctx.author.id, None) is not None:
+        await ctx.defer(ephemeral=True)
         token, cid = verification_map[ctx.author.id]
-        profile = bs4.BeautifulSoup(
-            requests.get(f"{LODESTONE_BASE_URL}{cid}").content.decode(), "html.parser"
-        ).find_all("div", "character__selfintroduction")[
-            0
-        ]  # type: bs4.element.Tag
+        try:
+            profile = bs4.BeautifulSoup(
+                requests.get(f"{LODESTONE_BASE_URL}{cid}").content.decode(), "html.parser"
+            ).find_all("div", "character__selfintroduction")[
+                0
+            ]  # type: bs4.element.Tag
+        except IndexError:
+            await ctx.send_followup(
+                f"Could not find a character profile at: {LODESTONE_BASE_URL}{cid}",
+                ephemeral=True
+            )
+            return
 
-        if token in str(profile.string):
+        if token in str(profile):
             ACHIEVEMENT_BASE_URL = (
                 f"{LODESTONE_BASE_URL}{cid}{LODESTONE_ACHIEVEMENT_BASE_URL}"
             )
-            await ctx.defer(ephemeral=True)
             drs_req = requests.get(
                 f"{ACHIEVEMENT_BASE_URL}{ACHIEVEMENT_ID_MAP['DRS Clear']}/"
             )
@@ -277,10 +298,9 @@ async def verify(ctx: discord.ApplicationContext):
                 > 0
             )
 
-            if cleared_drs or cleared_ba:
-                try:
-                    member = await bot.PEBE.fetch_member(ctx.author.id)
-
+            try:
+                member = await bot.PEBE.fetch_member(ctx.author.id)
+                if cleared_drs or cleared_ba:
                     roles_to_add = []
                     if cleared_ba:
                         roles_to_add.append(discord.Object(ROLE_ID_MAP["Cleared BA"]))
@@ -290,22 +310,25 @@ async def verify(ctx: discord.ApplicationContext):
                     await member.add_roles(*roles_to_add, reason="Verified clear")
 
                     await ctx.send_followup("Roles added!", ephemeral=True)
+                else:
+                    await ctx.send_followup(
+                        "Verification complete!",
+                        ephemeral=True,
+                    )
 
-                except discord.NotFound:
-                    await ctx.send_followup(
-                        "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
-                    )
-                except discord.HTTPException:
-                    await ctx.send_followup(
-                        "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
-                    )
-            else:
+                await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
+
+            except discord.NotFound:
                 await ctx.send_followup(
-                    "No roles to add. Go clear DRS or BA then verify again!",
-                    ephemeral=True,
+                    "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
                 )
+            except discord.HTTPException:
+                await ctx.send_followup(
+                    "Something went wrong. @( ﾟヮﾟ)#1052", ephemeral=True
+                )
+
         else:
-            await ctx.send_response(
+            await ctx.send_followup(
                 f"Could not find {token} in your character profile. Make sure it is"
                 " there, then try again.",
                 ephemeral=True,
@@ -316,10 +339,15 @@ async def verify(ctx: discord.ApplicationContext):
             f" like: {LODESTONE_BASE_URL}12345678/\nCopy the 8 digits at the end of the"
             " URL, and use /verifycharacter NUMBERS\nIt will provide you with some"
             " text to put in your Character Profile.\nAfter doing that, make sure your"
-            " acheivements are public, and then call /verify again.",
+            " achievements are public, and then call /verify again.",
             ephemeral=True,
         )
 
+
+with open("verification_map.json", "r") as loadfile:
+    str_verification_map = json.load(loadfile)  # type: Dict[str, Tuple[str, int]]
+    for key in str_verification_map.keys():
+        verification_map[int(key)] = str_verification_map[key]
 
 with open("token", "r") as token:
     bot.run(token.read())
