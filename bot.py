@@ -443,7 +443,7 @@ async def verifycharacter(ctx: discord.ApplicationContext, char_id: int):
             ephemeral=True,
         )
     else:
-        await ctx.send_followup(f"Invalid character ID!", ephemeral=True)
+        await ctx.send_response(f"Invalid character ID!", ephemeral=True)
 
 
 async def add_user_roles_from_verification(did: int, cid: int) -> Tuple[bool, str]:
