@@ -1,9 +1,36 @@
 import asyncio
+import bs4
 from const import *
 from datetime import datetime
 import discord
+import json
 import re
+import requests
+import threading
+import time
 from typing import *
+
+with open("xivapikey") as key:
+    xivapikey = key.read()
+
+CALLS_REMAINING = 20
+MAX_RATE = 20
+CALL_LOCK = threading.Lock()
+HAS_CALLS = threading.Condition(CALL_LOCK)
+API_SESSION = requests.Session()
+API_SESSION.params["private_key"] = xivapikey
+
+
+def rate_limited(func):
+    def wrapper(*args, **kwargs):
+        global CALLS_REMAINING, HAS_CALLS
+        with HAS_CALLS:
+            while CALLS_REMAINING == 0:
+                HAS_CALLS.wait()
+            CALLS_REMAINING -= 1
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 def extract_hammertime_timestamps(content: str) -> List[datetime]:
@@ -40,9 +67,127 @@ async def validate_message_tags(
 
 
 def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int]]:
+    print(content)
     return [
         (discord.PartialEmoji.from_str(binding[0]), int(binding[1]))
-        for binding in re.findall(
-            "(<a?:[a-zA-Z_]+:\d+>)\s+= [a-zA-z ]+ <@&(\d+)>", content
-        )
+        for binding in re.findall("\s*(\S+?)\s+= [a-zA-z ]+ <@&(\d+)>", content)
     ]
+
+
+@rate_limited
+def lodestone_search(name: str, server: str) -> Optional[Dict[str, Union[str, int]]]:
+    results = API_SESSION.get(
+        f"{XIVAPI_BASE_URL}character/search", params={"name": name, "server": server}
+    ).json()["Results"]
+    for result in results:
+        if result["Name"] == name and result["Server"] == server:
+            return {
+                "id": result["ID"],
+                "name": name,
+                "server": server,
+            }
+    return None
+
+
+def extract_name_server(
+    id: int, req: Optional[requests.Response] = None
+) -> Optional[Tuple[str, str]]:
+    request = req if req is not None else requests.get(f"{LODESTONE_BASE_URL}{id}")
+    if request.status_code == 404:
+        return None
+    result = bs4.BeautifulSoup(
+        request.content.decode(),
+        "html.parser",
+    )
+    name = result.find("p", "frame__chara__name").text
+    server = result.find("p", "frame__chara__world").text
+    return name, server
+
+
+def full_validate(
+    registered_data: Dict[str, Union[bool, int, str]]
+) -> Union[str, Dict[str, Union[bool, int, str]]]:
+    cid = registered_data["id"]
+    name = registered_data["name"]
+    server = registered_data["server"]
+    token = registered_data["token"]
+    resp = requests.get(f"{LODESTONE_BASE_URL}{cid}")
+    fname, fserver = extract_name_server(cid, resp)
+    if fname != name:
+        return (
+            f"Name {name} does not match name associated with character with ID {cid},"
+            f" {fname}. Try using the Register button again."
+        )
+    if fserver.split(" ")[0] != server.split(" ")[0]:
+        return (
+            f"Server {server} does not match server associated with character with ID"
+            f" {cid}, {fserver}. Try using the Register button again."
+        )
+    if not user_has_token_in_profile(cid, token, resp):
+        return (
+            f"Token, {token}, not found in character profile at"
+            f" {LODESTONE_BASE_URL}{id}"
+        )
+    registered_data["server"] = fserver  # Adds [Datacenter]
+    registered_data["valid"] = True
+    return registered_data
+
+
+def refresh_calls_loop():
+    while True:
+        time.sleep(1)
+        global CALLS_REMAINING, HAS_CALLS
+        with HAS_CALLS:
+            CALLS_REMAINING = MAX_RATE
+            HAS_CALLS.notify_all()
+
+
+def update_verification_map():
+    with open("verification_map.json", "r") as vmap:
+        ver_map = json.load(vmap)
+    print(len(ver_map.keys()))
+    for key in ver_map.keys():
+        if not type(ver_map[key]) == dict:
+            ver_map[key] = {
+                "id": ver_map[key][1],
+                "token": ver_map[key][0],
+                "name": None,
+                "server": None,
+                "valid": False,
+            }
+    with open("verification_map.json", "w") as vmap:
+        json.dump(ver_map, vmap, indent=4)
+
+
+def user_has_token_in_profile(
+    ffxiv_id: int, token: str, resp: Optional[requests.Response] = None
+) -> bool:
+    resp = resp if resp is not None else requests.get(f"{LODESTONE_BASE_URL}{ffxiv_id}")
+    profile = bs4.BeautifulSoup(resp.content.decode(), "html.parser",).find_all(
+        "div", "character__selfintroduction"
+    )[
+        0
+    ]  # type: bs4.element.Tag
+
+    return token in str(profile)
+
+
+def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]:
+    ACHIEVEMENT_BASE_URL = (
+        f"{LODESTONE_BASE_URL}{ffxiv_id}{LODESTONE_ACHIEVEMENT_BASE_URL}"
+    )
+    req = requests.get(f"{ACHIEVEMENT_BASE_URL}{achievement_code}/")
+    if req.status_code == 404:
+        return None  # signals hidden achievements
+    return (
+        len(
+            bs4.BeautifulSoup(req.content.decode(), "html.parser").find_all(
+                "div",
+                "entry__achievement__view entry__achievement__view--complete",
+            )
+        )
+        > 0
+    )
+
+
+threading.Thread(target=refresh_calls_loop, daemon=True).start()
