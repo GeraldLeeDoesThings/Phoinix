@@ -125,8 +125,8 @@ def full_validate(
         )
     if not user_has_token_in_profile(cid, token, resp):
         return (
-            f"Token, {token}, not found in character profile at"
-            f" {LODESTONE_BASE_URL}{id}"
+            f"Token, `{token}`, not found in character profile at"
+            f" {LODESTONE_BASE_URL}{cid}"
         )
     registered_data["server"] = fserver  # Adds [Datacenter]
     registered_data["valid"] = True

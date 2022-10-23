@@ -63,6 +63,7 @@ class PhoinixBot(discord.Bot):
         self.reaction_bindings = (
             {}
         )  # type: Mapping[int, Mapping[discord.PartialEmoji, int]]
+        self.verification_view_added = False
         super().__init__(intents=intents, **options)
 
     async def delete_recruitment_post_and_related(self, rpost: discord.Message):
@@ -170,7 +171,10 @@ class PhoinixBot(discord.Bot):
         print(self.PEBE)
         await self.delete_untagged_messages()
         await self.compute_reaction_bindings()
-        self.add_view(VerificationView())
+        if not self.verification_view_added:
+            print("Adding verification view")
+            self.add_view(VerificationView())
+            self.verification_view_added = True
         self.aloop = asyncio.get_running_loop()
 
     async def on_message(self, message: discord.Message):
@@ -250,21 +254,30 @@ class VerificationModal(discord.ui.Modal):
     async def callback(self, interaction: discord.Interaction):
         name = self.children[0].value
         server = self.children[1].value.split(" ")[0]
-        fakedefer = await interaction.response.send_message("Searching...", ephemeral=True)  # type: discord.Interaction
+        fakedefer = await interaction.response.send_message(
+            "Searching...", ephemeral=True
+        )  # type: discord.Interaction
         if register_user(
             interaction.user.id,
             name,
             server,
         ):
-            await fakedefer.response.edit_message(
-                content=f"Character found! Add {get_user_token(interaction.user.id)} to your"
-                " character profile, then click the Verify button.",
+            await fakedefer.edit_original_response(
+                content=(
+                    f"Character found! Add `{get_user_token(interaction.user.id)}` to"
+                    " your character profile on the Lodestone, then click the Verify"
+                    " button. Your character profile can be found here:"
+                    " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
+                ),
             )
             return
-        await fakedefer.response.edit_message(
-            content=f"Could not find character with:\nName: {name}\nServer: {server}\n\nEnsure"
-            " that the name and server are correct. Name should be first and last (ex"
-            " Lerald Gee), and server should only include the server (ex Famfrit).",
+        await fakedefer.edit_original_response(
+            content=(
+                f"Could not find character with:\nName: {name}\nServer:"
+                f" {server}\n\nEnsure that the name and server are correct. Name should"
+                " be first and last (ex Lerald Gee), and server should only include"
+                " the server (ex Famfrit)."
+            ),
         )
 
 
@@ -284,35 +297,36 @@ class VerificationView(discord.ui.View):
         label="Verify", custom_id="verify", style=discord.ButtonStyle.primary
     )
     async def verify(self, button: discord.ui.Button, interaction: discord.Interaction):
+        response = await interaction.response.send_message(
+            "Verifying...", ephemeral=True
+        )  # type: discord.Interaction
         if not known_discord_id(interaction.user.id):
-            await interaction.response.send_message(
-                "You must register first! Click the Register button and follow the"
-                " instructions.",
-                ephemeral=True,
+            await response.edit_original_response(
+                content=(
+                    "You must register first! Click the Register button and follow the"
+                    " instructions."
+                ),
             )
             return
         if verification_map[interaction.user.id]["valid"]:
-            await interaction.response.send_message(
-                "You are already verified!", ephemeral=True
-            )
+            await response.edit_original_response(content="You are already verified!")
             return
         result = full_validate(verification_map[interaction.user.id])
         if type(result) == str:
-            await interaction.response.send_message(result, ephemeral=True)
+            await response.edit_original_response(content=result)
         else:
             try:
                 member = await bot.fetch_member(interaction.user.id)
                 await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
                 verification_map[interaction.user.id] = result
-                await interaction.response.send_message(
-                    "Successfully verified!", ephemeral=True
-                )
+                await response.edit_original_response(content="Successfully verified!")
             except discord.HTTPException:
                 print("Adding role failed!")
-                await interaction.response.send_message(
-                    "Something has gone wrong (not your fault). Click the Verify button"
-                    " again, and if errors continue, contact the staff.",
-                    ephemeral=True,
+                await response.edit_original_response(
+                    content=(
+                        "Something has gone wrong (not your fault). Click the Verify"
+                        " button again, and if errors continue, contact the staff."
+                    )
                 )
 
     @discord.ui.button(
@@ -366,35 +380,40 @@ class VerificationView(discord.ui.View):
                 ephemeral=True,
             )
         else:
+            response = await interaction.response.send_message(
+                "Checking achievements...", ephemeral=True
+            )  # type: discord.Interaction
             has = user_has_achievement(get_user_ffxiv_id(interaction.user.id), id)
             if has is None:
-                await interaction.response.send_message(
-                    "Your acheivements are not public! Set them to public, then try"
-                    " again.",
-                    ephemeral=True,
-                )
-            else:
-                if has:
-                    try:
-                        member = await bot.fetch_member(interaction.user.id)
-                        await member.add_roles(discord.Object(role))
-                        await interaction.response.send_message(
-                            "Role successfully added!", ephemeral=True
-                        )
-                    except discord.HTTPException:
-                        print("Adding role failed!")
-                        await interaction.response.send_message(
-                            "Something has gone wrong (not your fault). Click the"
-                            " Verify button again, and if errors continue, contact the"
-                            " staff.",
-                            ephemeral=True,
-                        )
-                else:
-                    await interaction.response.send_message(
-                        "You do not have an achievement indicating that you have"
-                        " cleared!",
-                        ephemeral=True,
+                await response.edit_original_response(
+                    content=(
+                        "Your achievements are not public! Set them to public, then try"
+                        " again."
                     )
+                )
+            elif has:
+                try:
+                    member = await bot.fetch_member(interaction.user.id)
+                    await member.add_roles(discord.Object(role))
+                    await response.edit_original_response(
+                        content="Role successfully added!"
+                    )
+                except discord.HTTPException:
+                    print("Adding role failed!")
+                    await response.edit_original_response(
+                        content=(
+                            "Something has gone wrong (not your fault). Click the"
+                            " Verify button again, and if errors continue, contact"
+                            " the staff."
+                        )
+                    )
+            else:
+                await response.edit_original_response(
+                    content=(
+                        "You do not have an achievement indicating that you have"
+                        " cleared!"
+                    )
+                )
 
 
 intents = discord.Intents.all()
@@ -402,206 +421,11 @@ intents = discord.Intents.all()
 bot = PhoinixBot(intents=intents)
 
 
-@bot.slash_command(
-    description=(
-        "Verifies that you have cleared DRS/BA via the Lodestone. Ensure your"
-        " achievements are public."
-    )
-)
-@discord.option(
-    "char_id",
-    description=f"EX: {LODESTONE_BASE_URL}12345678/ would input 12345678",
-)
-async def verifycharacter(ctx: discord.ApplicationContext, char_id: int):
-    did = ctx.author.id
-    if known_discord_id(did):
-        token = get_user_token(did)
-        cid = get_user_ffxiv_id(did)
-        if cid == char_id:
-            await ctx.send_response(
-                f"Add {token} to your Character Profile at"
-                " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/\nThen"
-                " use the /verify command. Make sure your achievements are public!",
-                ephemeral=True,
-            )
-            return
-    token = get_user_token(did)
-    ext = extract_name_server(char_id)
-    if ext is not None:
-        name, server = ext
-        verification_map[did] = {
-            "name": name,
-            "server": server,
-            "valid": False,
-            "id": char_id,
-            "token": token,
-        }
-        await ctx.send_response(
-            f"Add {token} to your Character Profile at"
-            " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/\nThen use"
-            " the /verify command. Make sure your achievements are public!",
-            ephemeral=True,
-        )
-    else:
-        await ctx.send_response(f"Invalid character ID!", ephemeral=True)
-
-
-async def add_user_roles_from_verification(did: int, cid: int) -> Tuple[bool, str]:
-    cleared_drs = user_has_achievement(cid, ACHIEVEMENT_ID_MAP["DRS Clear"])
-
-    if cleared_drs is None:
-        return (
-            False,
-            (
-                "Your achievements are not set to public! Set them to public, then try"
-                " again!"
-            ),
-        )
-
-    cleared_ba = user_has_achievement(cid, ACHIEVEMENT_ID_MAP["BA Clear"])
-
-    if cleared_ba is None:
-        # This will literally only ever happen if a user changes
-        # their achievements to private between the two requests
-        return (
-            False,
-            (
-                "Your achievements are not set to public! Set them to public, then try"
-                " again!"
-            ),
-        )
-
-    try:
-        member = await bot.PEBE.fetch_member(did)
-        roles_to_add = [discord.Object(ROLE_ID_MAP["Member"])]
-        if cleared_ba:
-            roles_to_add.append(discord.Object(ROLE_ID_MAP["Cleared BA"]))
-        if cleared_drs:
-            roles_to_add.append(discord.Object(ROLE_ID_MAP["Cleared DRS"]))
-
-        await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
-        verification_map[did]["valid"] = True
-        return (
-            True,
-            "Verification complete!",
-        )
-
-    except discord.NotFound:
-        return (False, "Something went wrong. @( ﾟヮﾟ)#1052")
-    except discord.HTTPException:
-        return (False, "Something went wrong. @( ﾟヮﾟ)#1052")
-
-
-@bot.slash_command(
-    description=(
-        "Verifies that you have cleared DRS/BA via the Lodestone. Use after verifying"
-        " with an id."
-    )
-)
-async def verify(ctx: discord.ApplicationContext):
-    did = ctx.author.id
-    if known_discord_id(did):
-        await ctx.defer(ephemeral=True)
-        token = get_user_token(did)
-        cid = get_user_ffxiv_id(did)
-        try:
-            token_present = user_has_token_in_profile(cid, token)
-        except IndexError:
-            await ctx.send_followup(
-                f"Could not find a character profile at: {LODESTONE_BASE_URL}{cid}",
-                ephemeral=True,
-            )
-            return
-        if token_present:
-            _, message = await add_user_roles_from_verification(ctx.author.id, cid)
-            await ctx.send_followup(message, ephemeral=True)
-        else:
-            await ctx.send_followup(
-                f"Could not find {token} in your character profile. Make sure it is"
-                " there, then try again.",
-                ephemeral=True,
-            )
-    else:
-        await ctx.send_response(
-            "First, find your character on the Lodestone. The link will look something"
-            f" like: {LODESTONE_BASE_URL}12345678/\nCopy the 8 digits at the end of the"
-            " URL, and use /verifycharacter NUMBERS\nIt will provide you with some"
-            " text to put in your Character Profile.\nAfter doing that, make sure your"
-            " achievements are public, and then call /verify again.",
-            ephemeral=True,
-        )
-
-
-@bot.slash_command(
-    description=(
-        "Verifies that you own a FFXIV account, and additionally checks for clears."
-        " Gives the member role."
-    )
-)
-@discord.option(
-    "name",
-    description=f"Your FFXIV character's full name. Ex: Lerald Gee",
-)
-@discord.option(
-    "server",
-    description=f"Your FFXIV character's server name. Ex: Famfrit",
-)
-async def easyverify(ctx: discord.ApplicationContext, name: str, server: str):
-    discord_id = ctx.author.id
-    await ctx.defer(ephemeral=True)
-    if known_discord_id(discord_id):
-        saved_name, saved_server = get_user_ffxiv_name_server(discord_id)
-        if saved_name == name and saved_server == server:
-            # The user has not changed their name or server, so verify the presence of the token + achievements
-            token = get_user_token(discord_id)
-            fid = get_user_ffxiv_id(discord_id)
-            has_token = user_has_token_in_profile(
-                verification_map[discord_id]["id"],
-                token,
-            )
-            if has_token:
-                _, message = await add_user_roles_from_verification(discord_id, fid)
-                await ctx.send_followup(message, ephemeral=True)
-                return
-            else:
-                await ctx.send_followup(
-                    f"Could not find your token, {token}, in your character profile"
-                    f" page at {LODESTONE_BASE_URL}{fid}\nIf the link is wrong, check"
-                    " the name and server you provided! If the link is correct, ensure"
-                    " that the token is present. Copy pasting the entire token is the"
-                    " safest way to do this, as some characters look extremely"
-                    " similar.",
-                    ephemeral=True,
-                )
-                return
-
-    # Either this is an unverified user, or someone is verifying a different account
-    try_find = lodestone_search(name, server)
-    if try_find is not None:
-        # Found that character on the Lodestone, create a new entry
-        try_find["valid"] = False
-        try_find["token"] = get_user_token(discord_id)
-        verification_map[discord_id] = try_find
-        await ctx.send_followup(
-            f"Found your character! Add the following text {try_find['token']} to your"
-            " character profile at"
-            " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/ then call"
-            " this command again, EXACTLY as you did this time. DO NOT copy paste the"
-            " command, as discord may not process it as a proper command.",
-            ephemeral=True,
-        )
-    else:
-        await ctx.send_followup(
-            "Could not find that character! Make sure you are using your full name, and"
-            " that you have entered it correctly!",
-            ephemeral=True,
-        )
-
-
 @bot.slash_command()
 async def summonverify(ctx: discord.ApplicationContext):
     if ctx.author.id == 172451187264716800:
         await ctx.channel.send(view=VerificationView())
+        await ctx.send_response("Nya :3", ephemeral=True)
     else:
         await ctx.send_response("Only Lerald can run this.", ephemeral=True)
 
