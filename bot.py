@@ -430,6 +430,47 @@ async def summonverify(ctx: discord.ApplicationContext):
         await ctx.send_response("Only Lerald can run this.", ephemeral=True)
 
 
+@bot.user_command(name="Get Name/Server")
+async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Member):
+    if known_discord_id(member.id):
+        name, server = get_user_ffxiv_name_server(member.id)
+        await ctx.response.send_message(f"{name} @ {server}", ephemeral=True)
+    else:
+        await ctx.response.send_message("That user is not registered.", ephemeral=True)
+
+
+@bot.slash_command(description="Searches for a user given an in game name and optionally a server")
+async def search(
+    ctx: discord.ApplicationContext, name_regex: str, server: Optional[str] = None
+):
+    try:
+        regex = re.compile(name_regex)
+    except re.error:
+        await ctx.response.send_message("Bad Regex", ephemeral=True)
+        return
+    finds = []  # type: List[Tuple[str, str, discord.Member]]
+    await ctx.response.defer(ephemeral=True)
+    foundcount = 0
+    for did in verification_map:
+        if foundcount == MAX_SEARCH_VALUES:
+            break
+        name, fserver = get_user_ffxiv_name_server(did)
+        if regex.search(name) is not None and (server is None or server in fserver):
+            fmember = await bot.fetch_member(did)
+            if fmember:
+                finds.append((name, fserver, fmember))
+                foundcount += 1
+    if len(finds) == 0:
+        await ctx.send_followup("Did not find anyone.", ephemeral=True)
+    else:
+        foundstring = "Found the following users:\n" + "\n".join(
+            f"{fname} @ {fserver} {mem.mention}" for fname, fserver, mem in finds
+        )
+        if len(foundstring) > 1985:
+            foundstring = foundstring[:1985] + "\nand more..."
+        await ctx.send_followup(foundstring, ephemeral=True)
+
+
 update_verification_map()
 with open("verification_map.json", "r") as loadfile:
     str_verification_map = json.load(
@@ -438,5 +479,6 @@ with open("verification_map.json", "r") as loadfile:
     for key in str_verification_map.keys():
         verification_map[int(key)] = str_verification_map[key]
 
-with open("token", "r") as token:
-    bot.run(token.read())
+if __name__ == "__main__":
+    with open("token", "r") as token:
+        bot.run(token.read())
