@@ -237,6 +237,11 @@ class PhoinixBot(discord.Bot):
         elif command.startswith("save"):
             with open("verification_map.json", "w") as dumpfile:
                 json.dump(verification_map, dumpfile, indent=4)
+        elif command.startswith("mark"):
+            for member in self.PEBE.members:
+                roles = [role.id for role in member.roles]
+                if len(roles) > 0 and ROLE_ID_MAP["Member"] not in roles:
+                    await member.add_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
@@ -318,6 +323,8 @@ class VerificationView(discord.ui.View):
             try:
                 member = await bot.fetch_member(interaction.user.id)
                 await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
+                if ROLE_ID_MAP["Not Verified"] in [role.id for role in member.roles]:
+                    await member.remove_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
                 verification_map[interaction.user.id] = result
                 await response.edit_original_response(content="Successfully verified!")
             except discord.HTTPException:
@@ -433,8 +440,9 @@ async def summonverify(ctx: discord.ApplicationContext):
 @bot.user_command(name="Get Name/Server")
 async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Member):
     if known_discord_id(member.id):
+        warning = "" if verification_map[member.id]["valid"] else "WARNING [POTENTIALLY INVALID NAME]: "
         name, server = get_user_ffxiv_name_server(member.id)
-        await ctx.response.send_message(f"{name} @ {server}", ephemeral=True)
+        await ctx.response.send_message(f"{warning}{name} @ {server}", ephemeral=True)
     else:
         await ctx.response.send_message("That user is not registered.", ephemeral=True)
 
@@ -452,13 +460,14 @@ async def search(
     await ctx.response.defer(ephemeral=True)
     foundcount = 0
     for did in verification_map:
+        warning = "" if verification_map[did]["valid"] else "WARNING [POTENTIALLY INVALID NAME]: "
         if foundcount == MAX_SEARCH_VALUES:
             break
         name, fserver = get_user_ffxiv_name_server(did)
         if regex.search(name) is not None and (server is None or server in fserver):
             fmember = await bot.fetch_member(did)
             if fmember:
-                finds.append((name, fserver, fmember))
+                finds.append((warning + name, fserver, fmember))
                 foundcount += 1
     if len(finds) == 0:
         await ctx.send_followup("Did not find anyone.", ephemeral=True)
