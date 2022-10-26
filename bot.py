@@ -240,7 +240,9 @@ class PhoinixBot(discord.Bot):
         elif command.startswith("mark"):
             for member in self.PEBE.members:
                 roles = [role.id for role in member.roles]
-                if len(roles) > 0 and ROLE_ID_MAP["Member"] not in roles:
+                if len(roles) == 2 and ROLE_ID_MAP["Not Verified"] in roles:
+                    await member.remove_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
+                elif len(roles) > 1 and ROLE_ID_MAP["Member"] not in roles:
                     await member.add_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
 
     async def impersonate(self, channel_id, message):
