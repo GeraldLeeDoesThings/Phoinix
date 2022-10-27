@@ -4,12 +4,14 @@ from const import *
 import datetime
 import discord
 import json
+import os
 import re
 import requests
 import secrets
 import threading
 from typing import *
 from utils import *
+import uuid
 
 # Maps User ID (Discord) -> (Token, Character ID (FFXIV))
 verification_map = {}  # type: Dict[int, Dict[str, Union[bool, int, str]]]
@@ -480,6 +482,48 @@ async def search(
         if len(foundstring) > 1985:
             foundstring = foundstring[:1985] + "\nand more..."
         await ctx.send_followup(foundstring, ephemeral=True)
+
+
+@bot.slash_command(description="Registers an image to show up in response to the guide command")
+async def register(ctx: discord.ApplicationContext, name: str, image: discord.Attachment):
+    member = await bot.fetch_member(ctx.author.id)
+    if member is None:
+        await ctx.response.send_message("Bwo you are not even in PEBE", ephemeral=True)
+    elif member.get_role(ROLE_ID_MAP["BA Lead"]) or member.get_role(ROLE_ID_MAP["DRS Lead"]) or member.get_role(ROLE_ID_MAP["Moderator"]) or member.get_role(ROLE_ID_MAP["Admin"]):
+        name = os.path.basename(name)
+        if '.' in name:
+            await ctx.response.send_message(f"Unsuitable name provided: {name}\nName must not contain '.' or '/'", ephemeral=True)
+        else:
+            await ctx.response.defer(ephemeral=True)
+            for base, _, files in os.walk('./guides'):
+                for file in files:
+                    fbase, ext = os.path.splitext(file)
+                    if fbase == name:
+                        fullname = os.path.join(base, file)
+                        os.rename(fullname, f"./archive/{fbase}{uuid.uuid4().hex}{ext}")
+                        break
+            _, ext = os.path.splitext(image.filename)
+            await image.save(f"./guides/{name}{ext}")
+            await ctx.send_followup("File registered!", ephemeral=True)
+    else:
+        await ctx.response.send_message("You must have a lead role to register guides.", ephemeral=True)
+
+
+@bot.slash_command(description="Get a guide that has been registered with the register command")
+async def guide(ctx: discord.ApplicationContext, name: str):
+    name = os.path.basename(name)
+    if '.' in name:
+        await ctx.response.send_message("Bad name provided.", ephemeral=True)
+    else:
+        await ctx.response.defer()
+        for base, _, files in os.walk('./guides'):
+            for file in files:
+                fbase, ext = os.path.splitext(file)
+                if fbase == name:
+                    with open(os.path.join(base, file), "rb") as guidef:
+                        await ctx.send_followup(file=discord.File(guidef))
+                    return
+        await ctx.send_followup("No guide with that name.", ephemeral=True)
 
 
 update_verification_map()
