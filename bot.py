@@ -542,6 +542,7 @@ async def register(
         or member.get_role(ROLE_ID_MAP["Admin"])
     ):
         if re.match('\S+', name):
+            name = name.lower()
             await ctx.defer(ephemeral=True)
             async with bot.guide_lock:
                 if name in bot.guide_bindings:
@@ -565,6 +566,7 @@ async def register(
     description="Get a guide that has been registered with the register command"
 )
 async def guide(ctx: discord.ApplicationContext, name: str):
+    name = name.lower()
     if name in bot.guide_bindings:
         async with bot.guide_lock:
             first_response = True
