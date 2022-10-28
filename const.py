@@ -7,6 +7,8 @@ CHANNEL_ID_MAP = {
     "command": 275741052344860672,
     "roles": 1029906434877558886,
     "rules": 1029060303746506772,
+    "guides": 1035114697957064754,
+    "guides-archive": 1035462741336531014,
 }
 
 ROLE_ID_MAP = {
@@ -27,6 +29,11 @@ ROLE_ID_MAP = {
 ACHIEVEMENT_ID_MAP = {
     "DRS Clear": 2765,
     "BA Clear": 2227,
+}
+
+EMOJI_ID_MAP = {
+    "checkmark": 1035394485435236422,
+    "x": 1035394485435236422,
 }
 
 LODESTONE_BASE_URL = "https://na.finalfantasyxiv.com/lodestone/character/"

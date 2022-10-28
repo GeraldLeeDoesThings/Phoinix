@@ -64,7 +64,9 @@ class PhoinixBot(discord.Bot):
         # Maps Message ID -> (Emoji -> Role ID)
         self.reaction_bindings = (
             {}
-        )  # type: Mapping[int, Mapping[discord.PartialEmoji, int]]
+        )  # type: Dict[int, Dict[discord.PartialEmoji, int]]
+        self.guide_bindings = {}  # type: Dict[str, Dict[int, discord.Message]]
+        self.guide_lock = asyncio.Lock()
         self.verification_view_added = False
         super().__init__(intents=intents, **options)
 
@@ -142,6 +144,25 @@ class PhoinixBot(discord.Bot):
                         " repost it!"
                     )
 
+
+    async def compute_guide_bindings(self):
+        guides = self.get_channel(CHANNEL_ID_MAP["guides"])  # type: discord.TextChannel
+        guide_messages = guides.history()
+        bindings = {}  # type: Dict[str, Dict[int, discord.Message]]
+
+        async for message in guide_messages:
+            message # type: discord.Message
+            firstline = message.content.split("\n")[0]
+            form = re.search("(\w+)\s+(\d+)", firstline)
+            if form:
+                name = form[1]
+                seq = int(form[2])
+                bindings[name] = bindings.get(name, {}) | {seq: message}
+            else:
+                await message.add_reaction(self.get_emoji(EMOJI_ID_MAP["x"]))
+        async with self.guide_lock:
+            self.guide_bindings = bindings
+
     async def delete_untagged_messages(self):
         ba = self.get_channel(CHANNEL_ID_MAP["ba-recruiting"])
         drs = self.get_channel(CHANNEL_ID_MAP["drs-recruiting"])
@@ -173,6 +194,7 @@ class PhoinixBot(discord.Bot):
         print(self.PEBE)
         await self.delete_untagged_messages()
         await self.compute_reaction_bindings()
+        await self.compute_guide_bindings()
         if not self.verification_view_added:
             print("Adding verification view")
             self.add_view(VerificationView())
@@ -506,7 +528,7 @@ async def search(
     description="Registers an image to show up in response to the guide command"
 )
 async def register(
-    ctx: discord.ApplicationContext, name: str, image: discord.Attachment
+    ctx: discord.ApplicationContext, name: str, image: discord.Attachment, position: int = 0
 ):
     member = await bot.fetch_member(ctx.author.id)
     if member is None:
@@ -517,24 +539,20 @@ async def register(
         or member.get_role(ROLE_ID_MAP["Moderator"])
         or member.get_role(ROLE_ID_MAP["Admin"])
     ):
-        name = os.path.basename(name)
-        if "." in name:
-            await ctx.response.send_message(
-                f"Unsuitable name provided: {name}\nName must not contain '.' or '/'",
-                ephemeral=True,
-            )
+        if re.match('\S+', name):
+            await ctx.defer(ephemeral=True)
+            async with bot.guide_lock:
+                if name in bot.guide_bindings:
+                    if position in bot.guide_bindings[name]:
+                        achan = bot.get_channel(CHANNEL_ID_MAP["guides-archive"])  # type: discord.TextChannel
+                        await achan.send(file=await bot.guide_bindings[name][position].attachments[0].to_file())
+                        await bot.guide_bindings[name][position].delete()
+                gchan = bot.get_channel(CHANNEL_ID_MAP["guides"])  # type: discord.TextChannel
+                await gchan.send(f"{name} {position}", file=await image.to_file())
+            await ctx.send_followup("Done!", ephemeral=True)
+            await bot.compute_guide_bindings()
         else:
-            await ctx.response.defer(ephemeral=True)
-            for base, _, files in os.walk("./guides"):
-                for file in files:
-                    fbase, ext = os.path.splitext(file)
-                    if fbase == name:
-                        fullname = os.path.join(base, file)
-                        os.rename(fullname, f"./archive/{fbase}{uuid.uuid4().hex}{ext}")
-                        break
-            _, ext = os.path.splitext(image.filename)
-            await image.save(f"./guides/{name}{ext}")
-            await ctx.send_followup("File registered!", ephemeral=True)
+            await ctx.response.send_message("Name must not contain spaces.", ephemeral=True)
     else:
         await ctx.response.send_message(
             "You must have a lead role to register guides.", ephemeral=True
@@ -545,19 +563,26 @@ async def register(
     description="Get a guide that has been registered with the register command"
 )
 async def guide(ctx: discord.ApplicationContext, name: str):
-    name = os.path.basename(name)
-    if "." in name:
-        await ctx.response.send_message("Bad name provided.", ephemeral=True)
+    if name in bot.guide_bindings:
+        async with bot.guide_lock:
+            first_response = True
+            for index in sorted(bot.guide_bindings[name].keys()):
+                msg = bot.guide_bindings[name][index]
+                if first_response:
+                    await ctx.send_response(msg.attachments[0].url)
+                    first_response = False
+                else:
+                    await ctx.send_followup(msg.attachments[0].url)
     else:
-        await ctx.response.defer()
-        for base, _, files in os.walk("./guides"):
-            for file in files:
-                fbase, ext = os.path.splitext(file)
-                if fbase == name:
-                    with open(os.path.join(base, file), "rb") as guidef:
-                        await ctx.send_followup(file=discord.File(guidef))
-                    return
-        await ctx.send_followup("No guide with that name.", ephemeral=True)
+        await ctx.send_response(f"No guide exists with the name: {name}")
+
+
+@bot.slash_command(
+    description="Get a list of guides",
+)
+async def listguides(ctx: discord.ApplicationContext):
+    async with bot.guide_lock:
+        await ctx.respond("List of guides:\n" + "\n".join(bot.guide_bindings))
 
 
 update_verification_map()
