@@ -151,12 +151,16 @@ class PhoinixBot(discord.Bot):
             message = message  # type: discord.Message
             firstline = message.content.split("\n")[0]
             form = re.match("(\S+)\s+(\d+)\s*", firstline)
-            if form:
+            if form and len(message.attachments) > 0:
                 name = form[1]
                 seq = int(form[2])
                 bindings[name] = bindings.get(name, {}) | {seq: message}
+                for reaction in message.reactions:
+                    if reaction.emoji == "❎" and reaction.me:
+                        await message.remove_reaction("❎", await self.fetch_member(self.user.id))
+                        break
             else:
-                await message.add_reaction(self.get_emoji(EMOJI_ID_MAP["x"]))
+                await message.add_reaction("❎")
         async with self.guide_lock:
             self.guide_bindings = bindings
 
