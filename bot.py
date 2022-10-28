@@ -153,7 +153,7 @@ class PhoinixBot(discord.Bot):
         async for message in guide_messages:
             message # type: discord.Message
             firstline = message.content.split("\n")[0]
-            form = re.search("(\w+)\s+(\d+)", firstline)
+            form = re.match("(\S+)\s+(\d+)\s+", firstline)
             if form:
                 name = form[1]
                 seq = int(form[2])
