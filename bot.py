@@ -221,6 +221,8 @@ class PhoinixBot(discord.Bot):
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         if payload.channel_id == CHANNEL_ID_MAP["roles"]:
             await self.compute_reaction_bindings()
+        elif payload.channel_id == CHANNEL_ID_MAP["guides"]:
+            await self.compute_guide_bindings()
 
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.user.id:
@@ -249,6 +251,10 @@ class PhoinixBot(discord.Bot):
                     pass
                 except discord.HTTPException:
                     pass
+
+    async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
+        if payload.channel_id == CHANNEL_ID_MAP["guides"]:
+            await self.compute_guide_bindings()
 
     async def parse_console_command(self, command):
         if command.startswith("send"):
