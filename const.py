@@ -36,9 +36,11 @@ EMOJI_ID_MAP = {
     "x": 1035394485435236422,
 }
 
+ECHO_TOKEN_URL = "https://www.geraldmadethiscool.website/echo/"
+
 LODESTONE_BASE_URL = "https://na.finalfantasyxiv.com/lodestone/character/"
 LODESTONE_SEARCH_URL = "https://na.finalfantasyxiv.com/lodestone/community/search/"
-LODESTONE_ACHIEVEMENT_BASE_URL = f"/achievement/detail/"
+LODESTONE_ACHIEVEMENT_BASE_URL = "/achievement/detail/"
 
 XIVAPI_BASE_URL = "https://xivapi.com/"
 

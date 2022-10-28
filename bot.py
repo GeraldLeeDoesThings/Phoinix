@@ -62,9 +62,7 @@ class PhoinixBot(discord.Bot):
         self.PEBE = None  # type: discord.Guild
         self.target_channel_id = None
         # Maps Message ID -> (Emoji -> Role ID)
-        self.reaction_bindings = (
-            {}
-        )  # type: Dict[int, Dict[discord.PartialEmoji, int]]
+        self.reaction_bindings = {}  # type: Dict[int, Dict[discord.PartialEmoji, int]]
         self.guide_bindings = {}  # type: Dict[str, Dict[int, discord.Message]]
         self.guide_lock = asyncio.Lock()
         self.verification_view_added = False
@@ -144,14 +142,13 @@ class PhoinixBot(discord.Bot):
                         " repost it!"
                     )
 
-
     async def compute_guide_bindings(self):
         guides = self.get_channel(CHANNEL_ID_MAP["guides"])  # type: discord.TextChannel
         guide_messages = guides.history()
         bindings = {}  # type: Dict[str, Dict[int, discord.Message]]
 
         async for message in guide_messages:
-            message # type: discord.Message
+            message = message  # type: discord.Message
             firstline = message.content.split("\n")[0]
             form = re.match("(\S+)\s+(\d+)\s*", firstline)
             if form:
@@ -311,7 +308,9 @@ class VerificationModal(discord.ui.Modal):
                 content=(
                     f"Character found! Add `{get_user_token(interaction.user.id)}` to"
                     " your character profile on the Lodestone, then click the Verify"
-                    " button. Your character profile can be found here:"
+                    " button. If you cannot copy your token, try copying from"
+                    f" {ECHO_TOKEN_URL}{get_user_token(interaction.user.id)} Your"
+                    " character profile can be found here:"
                     " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
                 ),
             )
@@ -536,7 +535,10 @@ async def search(
     description="Registers an image to show up in response to the guide command"
 )
 async def register(
-    ctx: discord.ApplicationContext, name: str, image: discord.Attachment, position: int = 0
+    ctx: discord.ApplicationContext,
+    name: str,
+    image: discord.Attachment,
+    position: int = 0,
 ):
     member = await bot.fetch_member(ctx.author.id)
     if member is None:
@@ -547,21 +549,31 @@ async def register(
         or member.get_role(ROLE_ID_MAP["Moderator"])
         or member.get_role(ROLE_ID_MAP["Admin"])
     ):
-        if re.match('\S+', name):
+        if re.match("\S+", name):
             name = name.lower()
             await ctx.defer(ephemeral=True)
             async with bot.guide_lock:
                 if name in bot.guide_bindings:
                     if position in bot.guide_bindings[name]:
-                        achan = bot.get_channel(CHANNEL_ID_MAP["guides-archive"])  # type: discord.TextChannel
-                        await achan.send(file=await bot.guide_bindings[name][position].attachments[0].to_file())
+                        achan = bot.get_channel(
+                            CHANNEL_ID_MAP["guides-archive"]
+                        )  # type: discord.TextChannel
+                        await achan.send(
+                            file=await bot.guide_bindings[name][position]
+                            .attachments[0]
+                            .to_file()
+                        )
                         await bot.guide_bindings[name][position].delete()
-                gchan = bot.get_channel(CHANNEL_ID_MAP["guides"])  # type: discord.TextChannel
+                gchan = bot.get_channel(
+                    CHANNEL_ID_MAP["guides"]
+                )  # type: discord.TextChannel
                 await gchan.send(f"{name} {position}", file=await image.to_file())
             await ctx.send_followup("Done!", ephemeral=True)
             await bot.compute_guide_bindings()
         else:
-            await ctx.response.send_message("Name must not contain spaces.", ephemeral=True)
+            await ctx.response.send_message(
+                "Name must not contain spaces.", ephemeral=True
+            )
     else:
         await ctx.response.send_message(
             "You must have a lead role to register guides.", ephemeral=True
