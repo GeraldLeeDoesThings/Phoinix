@@ -309,7 +309,7 @@ class VerificationModal(discord.ui.Modal):
                     f"Character found! Add `{get_user_token(interaction.user.id)}` to"
                     " your character profile on the Lodestone, then click the Verify"
                     " button. If you cannot copy your token, try copying from"
-                    f" {ECHO_TOKEN_URL}{get_user_token(interaction.user.id)} Your"
+                    f" {ECHO_TOKEN_URL}{get_user_token(interaction.user.id)}\nYour"
                     " character profile can be found here:"
                     " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
                 ),
