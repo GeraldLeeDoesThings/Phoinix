@@ -274,6 +274,8 @@ class PhoinixBot(discord.Bot):
                     and ROLE_ID_MAP["Not Verified"] not in roles
                 ):
                     await member.add_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
+        elif command.startswith("shutdown"):
+            exit(0)
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
