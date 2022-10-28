@@ -243,8 +243,14 @@ class PhoinixBot(discord.Bot):
             for member in self.PEBE.members:
                 roles = [role.id for role in member.roles]
                 if len(roles) == 2 and ROLE_ID_MAP["Not Verified"] in roles:
-                    await member.remove_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
-                elif len(roles) > 1 and ROLE_ID_MAP["Member"] not in roles and ROLE_ID_MAP["Not Verified"] not in roles:
+                    await member.remove_roles(
+                        discord.Object(ROLE_ID_MAP["Not Verified"])
+                    )
+                elif (
+                    len(roles) > 1
+                    and ROLE_ID_MAP["Member"] not in roles
+                    and ROLE_ID_MAP["Not Verified"] not in roles
+                ):
                     await member.add_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
 
     async def impersonate(self, channel_id, message):
@@ -328,7 +334,9 @@ class VerificationView(discord.ui.View):
                 member = await bot.fetch_member(interaction.user.id)
                 await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
                 if ROLE_ID_MAP["Not Verified"] in [role.id for role in member.roles]:
-                    await member.remove_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
+                    await member.remove_roles(
+                        discord.Object(ROLE_ID_MAP["Not Verified"])
+                    )
                 verification_map[interaction.user.id] = result
                 await response.edit_original_response(content="Successfully verified!")
             except discord.HTTPException:
@@ -444,14 +452,20 @@ async def summonverify(ctx: discord.ApplicationContext):
 @bot.user_command(name="Get Name/Server")
 async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Member):
     if known_discord_id(member.id):
-        warning = "" if verification_map[member.id]["valid"] else "WARNING [POTENTIALLY INVALID NAME]: "
+        warning = (
+            ""
+            if verification_map[member.id]["valid"]
+            else "WARNING [POTENTIALLY INVALID NAME]: "
+        )
         name, server = get_user_ffxiv_name_server(member.id)
         await ctx.response.send_message(f"{warning}{name} @ {server}", ephemeral=True)
     else:
         await ctx.response.send_message("That user is not registered.", ephemeral=True)
 
 
-@bot.slash_command(description="Searches for a user given an in game name and optionally a server")
+@bot.slash_command(
+    description="Searches for a user given an in game name and optionally a server"
+)
 async def search(
     ctx: discord.ApplicationContext, name_regex: str, server: Optional[str] = None
 ):
@@ -464,7 +478,11 @@ async def search(
     await ctx.response.defer(ephemeral=True)
     foundcount = 0
     for did in verification_map:
-        warning = "" if verification_map[did]["valid"] else "WARNING [POTENTIALLY INVALID NAME]: "
+        warning = (
+            ""
+            if verification_map[did]["valid"]
+            else "WARNING [POTENTIALLY INVALID NAME]: "
+        )
         if foundcount == MAX_SEARCH_VALUES:
             break
         name, fserver = get_user_ffxiv_name_server(did)
@@ -484,18 +502,30 @@ async def search(
         await ctx.send_followup(foundstring, ephemeral=True)
 
 
-@bot.slash_command(description="Registers an image to show up in response to the guide command")
-async def register(ctx: discord.ApplicationContext, name: str, image: discord.Attachment):
+@bot.slash_command(
+    description="Registers an image to show up in response to the guide command"
+)
+async def register(
+    ctx: discord.ApplicationContext, name: str, image: discord.Attachment
+):
     member = await bot.fetch_member(ctx.author.id)
     if member is None:
         await ctx.response.send_message("Bwo you are not even in PEBE", ephemeral=True)
-    elif member.get_role(ROLE_ID_MAP["BA Lead"]) or member.get_role(ROLE_ID_MAP["DRS Lead"]) or member.get_role(ROLE_ID_MAP["Moderator"]) or member.get_role(ROLE_ID_MAP["Admin"]):
+    elif (
+        member.get_role(ROLE_ID_MAP["BA Lead"])
+        or member.get_role(ROLE_ID_MAP["DRS Lead"])
+        or member.get_role(ROLE_ID_MAP["Moderator"])
+        or member.get_role(ROLE_ID_MAP["Admin"])
+    ):
         name = os.path.basename(name)
-        if '.' in name:
-            await ctx.response.send_message(f"Unsuitable name provided: {name}\nName must not contain '.' or '/'", ephemeral=True)
+        if "." in name:
+            await ctx.response.send_message(
+                f"Unsuitable name provided: {name}\nName must not contain '.' or '/'",
+                ephemeral=True,
+            )
         else:
             await ctx.response.defer(ephemeral=True)
-            for base, _, files in os.walk('./guides'):
+            for base, _, files in os.walk("./guides"):
                 for file in files:
                     fbase, ext = os.path.splitext(file)
                     if fbase == name:
@@ -506,17 +536,21 @@ async def register(ctx: discord.ApplicationContext, name: str, image: discord.At
             await image.save(f"./guides/{name}{ext}")
             await ctx.send_followup("File registered!", ephemeral=True)
     else:
-        await ctx.response.send_message("You must have a lead role to register guides.", ephemeral=True)
+        await ctx.response.send_message(
+            "You must have a lead role to register guides.", ephemeral=True
+        )
 
 
-@bot.slash_command(description="Get a guide that has been registered with the register command")
+@bot.slash_command(
+    description="Get a guide that has been registered with the register command"
+)
 async def guide(ctx: discord.ApplicationContext, name: str):
     name = os.path.basename(name)
-    if '.' in name:
+    if "." in name:
         await ctx.response.send_message("Bad name provided.", ephemeral=True)
     else:
         await ctx.response.defer()
-        for base, _, files in os.walk('./guides'):
+        for base, _, files in os.walk("./guides"):
             for file in files:
                 fbase, ext = os.path.splitext(file)
                 if fbase == name:
