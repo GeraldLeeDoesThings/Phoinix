@@ -589,6 +589,9 @@ async def register(
 )
 async def guide(ctx: discord.ApplicationContext, name: str):
     name = name.lower()
+    if "@" in name:
+        await ctx.respond("SHAME UPON YOU")
+        return
     if name in bot.guide_bindings:
         async with bot.guide_lock:
             first_response = True
