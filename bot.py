@@ -259,6 +259,18 @@ class PhoinixBot(discord.Bot):
         if payload.channel_id == CHANNEL_ID_MAP["guides"]:
             await self.compute_guide_bindings()
 
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        if before.display_name != after.display_name:
+            await self.fix_name(after)
+
+    async def fix_name(self, member: discord.Member):
+        nspair = get_user_ffxiv_name_server(member.id)
+        if nspair is not None:
+            name, _ = nspair
+            first, last = name.split(" ")
+            if not (first[:3] in member.display_name or last[:3] in member.display_name):
+                await member.edit(nick=f"{member.display_name[:26]} [{first[:3]}]")
+
     async def parse_console_command(self, command):
         if command.startswith("send"):
             await self.impersonate(self.target_channel_id, command[5:])
@@ -285,6 +297,9 @@ class PhoinixBot(discord.Bot):
                     await member.add_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
         elif command.startswith("shutdown"):
             exit(0)
+        elif command.startswith("fixnames"):
+            for member in self.PEBE.members:
+                await self.fix_name(member)
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
@@ -373,6 +388,7 @@ class VerificationView(discord.ui.View):
                         discord.Object(ROLE_ID_MAP["Not Verified"])
                     )
                 verification_map[interaction.user.id] = result
+                await bot.fix_name(member)
                 await response.edit_original_response(content="Successfully verified!")
             except discord.HTTPException:
                 print("Adding role failed!")
