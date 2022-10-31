@@ -157,7 +157,9 @@ class PhoinixBot(discord.Bot):
                 bindings[name] = bindings.get(name, {}) | {seq: message}
                 for reaction in message.reactions:
                     if reaction.emoji == "❎" and reaction.me:
-                        await message.remove_reaction("❎", await self.fetch_member(self.user.id))
+                        await message.remove_reaction(
+                            "❎", await self.fetch_member(self.user.id)
+                        )
                         break
             else:
                 await message.add_reaction("❎")
@@ -611,7 +613,9 @@ async def guide(ctx: discord.ApplicationContext, name: str):
 )
 async def listguides(ctx: discord.ApplicationContext):
     async with bot.guide_lock:
-        await ctx.respond("List of guides:\n" + "\n".join(bot.guide_bindings))
+        await ctx.respond(
+            "List of guides:\n" + "\n".join(bot.guide_bindings), ephemeral=True
+        )
 
 
 update_verification_map()
