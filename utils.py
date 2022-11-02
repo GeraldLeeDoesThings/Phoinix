@@ -11,8 +11,8 @@ from typing import *
 with open("xivapikey") as key:
     xivapikey = key.read()
 
-CALLS_REMAINING = 20
-MAX_RATE = 20
+MAX_RATE = 10
+CALLS_REMAINING = MAX_RATE
 CALL_LOCK = asyncio.Lock()
 HAS_CALLS = asyncio.Condition(CALL_LOCK)
 API_SESSION = requests.Session()
@@ -22,9 +22,9 @@ API_SESSION.params["private_key"] = xivapikey
 def rate_limited(func):
     def wrapper(*args, **kwargs):
         global CALLS_REMAINING, HAS_CALLS
-        with HAS_CALLS:
+        async with HAS_CALLS:
             while CALLS_REMAINING == 0:
-                HAS_CALLS.wait()
+                await HAS_CALLS.wait()
             CALLS_REMAINING -= 1
         return func(*args, **kwargs)
 
@@ -135,9 +135,9 @@ async def refresh_calls_loop():
     while True:
         await asyncio.sleep(1)
         global CALLS_REMAINING, HAS_CALLS
-        with HAS_CALLS:
+        async with HAS_CALLS:
             CALLS_REMAINING = MAX_RATE
-            HAS_CALLS.notify_all()
+            HAS_CALLS.notify(MAX_RATE)
 
 
 def update_verification_map():
