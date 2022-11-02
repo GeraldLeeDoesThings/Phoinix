@@ -6,8 +6,6 @@ import discord
 import json
 import re
 import requests
-import threading
-import time
 from typing import *
 
 with open("xivapikey") as key:
@@ -15,8 +13,8 @@ with open("xivapikey") as key:
 
 CALLS_REMAINING = 20
 MAX_RATE = 20
-CALL_LOCK = threading.Lock()
-HAS_CALLS = threading.Condition(CALL_LOCK)
+CALL_LOCK = asyncio.Lock()
+HAS_CALLS = asyncio.Condition(CALL_LOCK)
 API_SESSION = requests.Session()
 API_SESSION.params["private_key"] = xivapikey
 
@@ -133,9 +131,9 @@ def full_validate(
     return registered_data
 
 
-def refresh_calls_loop():
+async def refresh_calls_loop():
     while True:
-        time.sleep(1)
+        await asyncio.sleep(1)
         global CALLS_REMAINING, HAS_CALLS
         with HAS_CALLS:
             CALLS_REMAINING = MAX_RATE
@@ -190,4 +188,4 @@ def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]
     )
 
 
-threading.Thread(target=refresh_calls_loop, daemon=True).start()
+asyncio.run(refresh_calls_loop())
