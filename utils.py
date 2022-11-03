@@ -72,7 +72,9 @@ def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int
     ]
 
 
-async def lodestone_search(name: str, server: str) -> Optional[Dict[str, Union[str, int]]]:
+async def lodestone_search(
+    name: str, server: str
+) -> Optional[Dict[str, Union[str, int]]]:
     await consume_limited_call()
     results = API_SESSION.get(
         f"{XIVAPI_BASE_URL}character/search", params={"name": name, "server": server}
@@ -196,4 +198,3 @@ async def trigger_later(event: asyncio.Event, delay: float):
 async def wait_and_clear(event: asyncio.Event):
     await event.wait()
     event.clear()
-

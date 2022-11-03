@@ -66,10 +66,9 @@ class PhoinixBot(discord.Bot):
         # Maps Guide Name -> (Index -> Message Template)
         self.guide_bindings = {}  # type: Dict[str, Dict[int, discord.Message]]
         self.guide_lock = asyncio.Lock()
-        self.verification_view_added = False
         # Maps Message ID -> Moderation Function Event
         self.moderated_messages = {}  # type: Dict[int, asyncio.Event]
-        self.rate_limiter_running = False
+        self.first_ready = True
         super().__init__(intents=intents, **options)
 
     async def moderate_message(
@@ -103,10 +102,9 @@ class PhoinixBot(discord.Bot):
                 pass
             marked_dnd = False
             for reaction in message.reactions:
-                if (
-                    reaction.emoji == DO_NOT_DELETE_EMOJI
-                    and message.author in [user async for user in reaction.users()]
-                ):
+                if reaction.emoji == DO_NOT_DELETE_EMOJI and message.author in [
+                    user async for user in reaction.users()
+                ]:
                     await message.remove_reaction(DELETING_SOON_EMOJI, self.user)
                     marked_dnd = True
                     break
@@ -288,14 +286,21 @@ class PhoinixBot(discord.Bot):
         await self.delete_untagged_messages()
         await self.compute_reaction_bindings()
         await self.compute_guide_bindings()
-        if not self.verification_view_added:
+        if self.first_ready:
             print("Adding verification view")
             self.add_view(VerificationView())
-            self.verification_view_added = True
-        if not self.rate_limiter_running:
             asyncio.create_task(refresh_calls_loop())
-            self.rate_limiter_running = True
-        self.aloop = asyncio.get_running_loop()
+            for moderated_channel_id in MODERATED_CHANNEL_IDS:
+                channel = self.get_channel(
+                    moderated_channel_id
+                )  # type: discord.TextChannel
+                async for moderated_message in channel.history(after=GRACE_TIME):
+                    listener_event = asyncio.Event()
+                    self.moderated_messages[moderated_message.id] = listener_event
+                    asyncio.create_task(
+                        self.moderate_message(moderated_message, listener_event)
+                    )
+            self.first_ready = False
 
     async def on_message(self, message: discord.Message):
         id = message.channel.id
@@ -325,7 +330,10 @@ class PhoinixBot(discord.Bot):
         elif payload.channel_id == CHANNEL_ID_MAP["guides"]:
             await self.compute_guide_bindings()
 
-        if payload.channel_id in MODERATED_CHANNEL_IDS:
+        if (
+            payload.channel_id in MODERATED_CHANNEL_IDS
+            and payload.message_id in self.moderated_messages
+        ):
             self.moderated_messages[payload.message_id].set()
 
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -339,7 +347,10 @@ class PhoinixBot(discord.Bot):
                     discord.Object(role_id), reason="Reaction"
                 )
 
-        if payload.channel_id in MODERATED_CHANNEL_IDS:
+        if (
+            payload.channel_id in MODERATED_CHANNEL_IDS
+            and payload.message_id in self.moderated_messages
+        ):
             self.moderated_messages[payload.message_id].set()
 
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -359,14 +370,20 @@ class PhoinixBot(discord.Bot):
                 except discord.HTTPException:
                     pass
 
-        if payload.channel_id in MODERATED_CHANNEL_IDS:
+        if (
+            payload.channel_id in MODERATED_CHANNEL_IDS
+            and payload.message_id in self.moderated_messages
+        ):
             self.moderated_messages[payload.message_id].set()
 
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
         if payload.channel_id == CHANNEL_ID_MAP["guides"]:
             await self.compute_guide_bindings()
 
-        if payload.channel_id in MODERATED_CHANNEL_IDS:
+        if (
+            payload.channel_id in MODERATED_CHANNEL_IDS
+            and payload.message_id in self.moderated_messages
+        ):
             # This has to be done to clear the message moderation coroutine
             self.moderated_messages[payload.message_id].set()
             self.moderated_messages.pop(payload.message_id)
