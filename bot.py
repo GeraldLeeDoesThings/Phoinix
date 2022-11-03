@@ -136,7 +136,7 @@ class PhoinixBot(discord.Bot):
                 for stamp in extract_hammertime_timestamps(message.content)
             ]
             now = datetime.datetime.now()
-            expiration_time = max(stamps + [message.created_at + default_lifetime])
+            expiration_time = max(stamps + [message.created_at.replace(tzinfo=None) + default_lifetime])
             if now >= expiration_time:
                 await message.delete()
             elif (expiration_time - now).days == 0:
