@@ -1,7 +1,7 @@
 import asyncio
 import bs4
 from const import *
-from datetime import datetime
+import datetime
 import discord
 import json
 import re
@@ -19,26 +19,22 @@ API_SESSION = requests.Session()
 API_SESSION.params["private_key"] = xivapikey
 
 
-def rate_limited(func):
-    async def wrapper(*args, **kwargs):
-        global CALLS_REMAINING, HAS_CALLS
-        async with HAS_CALLS:
-            while CALLS_REMAINING == 0:
-                await HAS_CALLS.wait()
-            CALLS_REMAINING -= 1
-        return func(*args, **kwargs)
-
-    return wrapper
+async def consume_limited_call():
+    global CALLS_REMAINING, HAS_CALLS
+    async with HAS_CALLS:
+        while CALLS_REMAINING == 0:
+            await HAS_CALLS.wait()
+        CALLS_REMAINING -= 1
 
 
-def extract_hammertime_timestamps(content: str) -> List[datetime]:
+def extract_hammertime_timestamps(content: str) -> List[datetime.datetime]:
     return [
-        datetime.fromtimestamp(stamp)
+        datetime.datetime.fromtimestamp(stamp)
         for stamp in set(int(val) for val in re.findall("<t:(\d+):\w>", content))
     ]
 
 
-def generate_hammertime_timestamp(dtime: datetime) -> str:
+def generate_hammertime_timestamp(dtime: datetime.datetime) -> str:
     return f"<t:{int(dtime.timestamp())}:f>"
 
 
@@ -76,8 +72,8 @@ def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int
     ]
 
 
-@rate_limited
-def lodestone_search(name: str, server: str) -> Optional[Dict[str, Union[str, int]]]:
+async def lodestone_search(name: str, server: str) -> Optional[Dict[str, Union[str, int]]]:
+    await consume_limited_call()
     results = API_SESSION.get(
         f"{XIVAPI_BASE_URL}character/search", params={"name": name, "server": server}
     ).json()["Results"]
@@ -136,12 +132,12 @@ def full_validate(
 
 
 async def refresh_calls_loop():
-    while True:
-        await asyncio.sleep(1)
-        global CALLS_REMAINING, HAS_CALLS
-        async with HAS_CALLS:
-            CALLS_REMAINING = MAX_RATE
-            HAS_CALLS.notify(MAX_RATE)
+    await asyncio.sleep(1)
+    global CALLS_REMAINING, HAS_CALLS
+    async with HAS_CALLS:
+        CALLS_REMAINING = MAX_RATE
+        HAS_CALLS.notify(MAX_RATE)
+    asyncio.create_task(refresh_calls_loop())
 
 
 def update_verification_map():
@@ -201,5 +197,3 @@ async def wait_and_clear(event: asyncio.Event):
     await event.wait()
     event.clear()
 
-
-asyncio.run(refresh_calls_loop())

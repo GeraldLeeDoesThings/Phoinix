@@ -47,7 +47,7 @@ def get_user_ffxiv_name_server(id: int) -> Optional[Tuple[str, str]]:
     return None
 
 
-def register_user(did: int, name: str, server: str) -> bool:
+async def register_user(did: int, name: str, server: str) -> bool:
     search = await lodestone_search(name, server)
     if search is None:
         return False
@@ -69,6 +69,7 @@ class PhoinixBot(discord.Bot):
         self.verification_view_added = False
         # Maps Message ID -> Moderation Function Event
         self.moderated_messages = {}  # type: Dict[int, asyncio.Event]
+        self.rate_limiter_running = False
         super().__init__(intents=intents, **options)
 
     async def remove_own_reaction_or_pass(self, emoji: str, message: discord.Message):
@@ -308,6 +309,9 @@ class PhoinixBot(discord.Bot):
             print("Adding verification view")
             self.add_view(VerificationView())
             self.verification_view_added = True
+        if not self.rate_limiter_running:
+            asyncio.create_task(refresh_calls_loop())
+            self.rate_limiter_running = True
         self.aloop = asyncio.get_running_loop()
 
     async def on_message(self, message: discord.Message):
@@ -447,7 +451,7 @@ class VerificationModal(discord.ui.Modal):
         fakedefer = await interaction.response.send_message(
             "Searching...", ephemeral=True
         )  # type: discord.Interaction
-        if register_user(
+        if await register_user(
             interaction.user.id,
             name,
             server,
