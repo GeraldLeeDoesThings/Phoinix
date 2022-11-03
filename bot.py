@@ -63,10 +63,116 @@ class PhoinixBot(discord.Bot):
         self.target_channel_id = None
         # Maps Message ID -> (Emoji -> Role ID)
         self.reaction_bindings = {}  # type: Dict[int, Dict[discord.PartialEmoji, int]]
+        # Maps Guide Name -> (Index -> Message Template)
         self.guide_bindings = {}  # type: Dict[str, Dict[int, discord.Message]]
         self.guide_lock = asyncio.Lock()
         self.verification_view_added = False
+        # Maps Message ID -> Moderation Function Event
+        self.moderated_messages = {}  # type: Dict[int, asyncio.Event]
         super().__init__(intents=intents, **options)
+
+    async def remove_own_reaction_or_pass(self, emoji: str, message: discord.Message):
+        emoji = discord.PartialEmoji.from_str(emoji)
+        for reaction in message.reactions:
+            if reaction.me and reaction.emoji == emoji:
+                try:
+                    await message.remove_reaction(
+                        emoji, await self.fetch_member(OWN_ID)
+                    )
+                except discord.HTTPException:
+                    print(
+                        f"HTTP Error when removing reaction {emoji} from message in"
+                        f" channel {message.channel.name}"
+                    )
+                except:
+                    pass
+                return
+
+    async def moderate_message(
+        self,
+        message: discord.Message,
+        check_signal: asyncio.Event,
+        default_lifetime: Optional[datetime.timedelta] = None,
+        minimum_lifetime: Optional[datetime.timedelta] = None,
+    ):
+        if default_lifetime is None:
+            default_lifetime = DEFAULT_MESSAGE_LIFETIME
+        if minimum_lifetime is None:
+            minimum_lifetime = MIN_MESSAGE_LIFETIME
+        now = datetime.datetime.now()
+        await self.remove_own_reaction_or_pass(DELETING_SOON_EMOJI, message)
+        await self.remove_own_reaction_or_pass(MONITORING_EMOJI, message)
+        while True:
+            try:
+                message = await message.channel.fetch_message(message.id)
+            except discord.NotFound:
+                # Message was deleted, stop moderating it
+                return
+            except discord.Forbidden:
+                print(
+                    "Bot Permissions are not set up correctly! Cannot access message"
+                    f" in {message.channel.name} with message ID: {message.id} by"
+                    f" {message.author.display_name}"
+                )
+            except discord.HTTPException:
+                # Failed to connect, carry on and retry later
+                pass
+            marked_dnd = False
+            for reaction in message.reactions:
+                if (
+                    reaction.emoji == DO_NOT_DELETE_EMOJI
+                    and message.author in reaction.users()
+                ):
+                    await self.remove_own_reaction_or_pass(DELETING_SOON_EMOJI, message)
+                    marked_dnd = True
+                    break
+            if marked_dnd:
+                # The message is marked do not delete
+                await wait_and_clear(check_signal)
+                continue
+            stamps = [
+                stamp + minimum_lifetime
+                for stamp in extract_hammertime_timestamps(message.content)
+            ]
+            now = datetime.datetime.now()
+            expiration_time = max(stamps + [message.created_at + default_lifetime])
+            if now >= expiration_time:
+                await message.delete()
+            elif (expiration_time - now).days == 0:
+                # Not quite time to delete the message, but less than a day away. Mark the message.
+                await message.add_reaction(DELETING_SOON_EMOJI)
+                author = message.author  # type: discord.Member
+                dm_channel = author.dm_channel  # type: Optional[discord.DMChannel]
+                if dm_channel is None:
+                    dm_channel = await author.create_dm()
+                try:
+                    await dm_channel.send(
+                        f"Your message {message.jump_url} will be deleted at"
+                        f" {generate_hammertime_timestamp(expiration_time)} unless you"
+                        f" react with {DO_NOT_DELETE_EMOJI}\n"
+                        "Please only react if the message should not be deleted."
+                    )
+                except:
+                    pass
+                asyncio.create_task(
+                    trigger_later(check_signal, (expiration_time - now).total_seconds())
+                )
+                await wait_and_clear(check_signal)
+            else:
+                # More than a day away, schedule a check for just under a day away from the expiration time
+                await message.add_reaction(MONITORING_EMOJI)
+                asyncio.create_task(
+                    trigger_later(
+                        check_signal,
+                        (
+                            expiration_time
+                            - now
+                            - minimum_lifetime
+                            + datetime.timedelta(seconds=1)
+                        ).total_seconds(),
+                    )
+                )
+                await wait_and_clear(check_signal)
 
     async def delete_recruitment_post_and_related(self, rpost: discord.Message):
         times = extract_hammertime_timestamps(rpost.content)
@@ -221,11 +327,19 @@ class PhoinixBot(discord.Bot):
         elif id == 975557259893555271:
             print(message.content)
 
+        if id in MODERATED_CHANNEL_IDS:
+            listener_event = asyncio.Event()
+            self.moderated_messages[message.id] = listener_event
+            asyncio.create_task(self.moderate_message(message, listener_event))
+
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         if payload.channel_id == CHANNEL_ID_MAP["roles"]:
             await self.compute_reaction_bindings()
         elif payload.channel_id == CHANNEL_ID_MAP["guides"]:
             await self.compute_guide_bindings()
+
+        if payload.channel_id in MODERATED_CHANNEL_IDS:
+            self.moderated_messages[payload.message_id].set()
 
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.user.id:
@@ -237,6 +351,9 @@ class PhoinixBot(discord.Bot):
                 await payload.member.add_roles(
                     discord.Object(role_id), reason="Reaction"
                 )
+
+        if payload.channel_id in MODERATED_CHANNEL_IDS:
+            self.moderated_messages[payload.message_id].set()
 
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.user.id:
@@ -255,9 +372,17 @@ class PhoinixBot(discord.Bot):
                 except discord.HTTPException:
                     pass
 
+        if payload.channel_id in MODERATED_CHANNEL_IDS:
+            self.moderated_messages[payload.message_id].set()
+
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
         if payload.channel_id == CHANNEL_ID_MAP["guides"]:
             await self.compute_guide_bindings()
+
+        if payload.channel_id in MODERATED_CHANNEL_IDS:
+            # This has to be done to clear the message moderation coroutine
+            self.moderated_messages[payload.message_id].set()
+            self.moderated_messages.pop(payload.message_id)
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.display_name != after.display_name:
@@ -268,7 +393,9 @@ class PhoinixBot(discord.Bot):
         if nspair is not None:
             name, _ = nspair
             first, last = name.split(" ")
-            if not (first[:3] in member.display_name or last[:3] in member.display_name):
+            if not (
+                first[:3] in member.display_name or last[:3] in member.display_name
+            ):
                 await member.edit(nick=f"{member.display_name[:26]} [{first[:3]}]")
 
     async def parse_console_command(self, command):

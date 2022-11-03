@@ -1,4 +1,5 @@
 import datetime
+import discord
 
 
 CHANNEL_ID_MAP = {
@@ -9,6 +10,7 @@ CHANNEL_ID_MAP = {
     "rules": 1029060303746506772,
     "guides": 1035114697957064754,
     "guides-archive": 1035462741336531014,
+    "bot-testing": 1037625423850389505
 }
 
 ROLE_ID_MAP = {
@@ -47,4 +49,19 @@ XIVAPI_BASE_URL = "https://xivapi.com/"
 GRACE_TIME = datetime.datetime.fromisoformat("2022-10-10 23:16:42.262194+00:00")
 HALF_DAY = datetime.timedelta(days=0.5)
 
+MIN_MESSAGE_LIFETIME = datetime.timedelta(minutes=1)  # TODO: Change to something reasonable
+DEFAULT_MESSAGE_LIFETIME = datetime.timedelta(minutes=7)
+
 MAX_SEARCH_VALUES = 25
+
+OWN_ID = 1029108007264596038
+
+DELETING_SOON_EMOJI = "⏰"
+MONITORING_EMOJI = "👀"
+DO_NOT_DELETE_EMOJI = discord.PartialEmoji.from_str(
+    "<:StoneskinII:1029110555354595399>"
+)
+
+MODERATED_CHANNEL_IDS = [
+    CHANNEL_ID_MAP["bot-testing"]
+]

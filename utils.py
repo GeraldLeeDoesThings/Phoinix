@@ -38,6 +38,10 @@ def extract_hammertime_timestamps(content: str) -> List[datetime]:
     ]
 
 
+def generate_hammertime_timestamp(dtime: datetime) -> str:
+    return f"<t:{int(dtime.timestamp())}:f>"
+
+
 async def validate_message_tags(
     m: discord.Message, member: Optional[discord.Member], role_ids: List[int]
 ):
@@ -186,6 +190,16 @@ def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]
         )
         > 0
     )
+
+
+async def trigger_later(event: asyncio.Event, delay: float):
+    await asyncio.sleep(delay)
+    event.set()
+
+
+async def wait_and_clear(event: asyncio.Event):
+    await event.wait()
+    event.clear()
 
 
 asyncio.run(refresh_calls_loop())
