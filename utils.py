@@ -20,7 +20,7 @@ API_SESSION.params["private_key"] = xivapikey
 
 
 def rate_limited(func):
-    def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs):
         global CALLS_REMAINING, HAS_CALLS
         async with HAS_CALLS:
             while CALLS_REMAINING == 0:
