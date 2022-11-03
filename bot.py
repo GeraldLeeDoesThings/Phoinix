@@ -72,23 +72,6 @@ class PhoinixBot(discord.Bot):
         self.rate_limiter_running = False
         super().__init__(intents=intents, **options)
 
-    async def remove_own_reaction_or_pass(self, emoji: str, message: discord.Message):
-        emoji = discord.PartialEmoji.from_str(emoji)
-        for reaction in message.reactions:
-            if reaction.me and reaction.emoji == emoji:
-                try:
-                    await message.remove_reaction(
-                        emoji, await self.fetch_member(OWN_ID)
-                    )
-                except discord.HTTPException:
-                    print(
-                        f"HTTP Error when removing reaction {emoji} from message in"
-                        f" channel {message.channel.name}"
-                    )
-                except:
-                    pass
-                return
-
     async def moderate_message(
         self,
         message: discord.Message,
@@ -101,8 +84,8 @@ class PhoinixBot(discord.Bot):
         if minimum_lifetime is None:
             minimum_lifetime = MIN_MESSAGE_LIFETIME
         now = datetime.datetime.now()
-        await self.remove_own_reaction_or_pass(DELETING_SOON_EMOJI, message)
-        await self.remove_own_reaction_or_pass(MONITORING_EMOJI, message)
+        await message.remove_reaction(DELETING_SOON_EMOJI, self.user)
+        await message.add_reaction(MONITORING_EMOJI)
         while True:
             try:
                 message = await message.channel.fetch_message(message.id)
@@ -122,9 +105,9 @@ class PhoinixBot(discord.Bot):
             for reaction in message.reactions:
                 if (
                     reaction.emoji == DO_NOT_DELETE_EMOJI
-                    and message.author in reaction.users()
+                    and message.author in [user async for user in reaction.users()]
                 ):
-                    await self.remove_own_reaction_or_pass(DELETING_SOON_EMOJI, message)
+                    await message.remove_reaction(DELETING_SOON_EMOJI, self.user)
                     marked_dnd = True
                     break
             if marked_dnd:
@@ -135,8 +118,8 @@ class PhoinixBot(discord.Bot):
                 stamp + minimum_lifetime
                 for stamp in extract_hammertime_timestamps(message.content)
             ]
-            now = datetime.datetime.now()
-            expiration_time = max(stamps + [message.created_at.replace(tzinfo=None) + default_lifetime])
+            now = datetime.datetime.now(datetime.timezone.utc)
+            expiration_time = max(stamps + [message.created_at + default_lifetime])
             if now >= expiration_time:
                 await message.delete()
             elif (expiration_time - now).days == 0:
@@ -148,7 +131,7 @@ class PhoinixBot(discord.Bot):
                     dm_channel = await author.create_dm()
                 try:
                     await dm_channel.send(
-                        f"Your message {message.jump_url} will be deleted at"
+                        f"Your message {message.jump_url} will be deleted in"
                         f" {generate_hammertime_timestamp(expiration_time)} unless you"
                         f" react with {DO_NOT_DELETE_EMOJI}\n"
                         "Please only react if the message should not be deleted."

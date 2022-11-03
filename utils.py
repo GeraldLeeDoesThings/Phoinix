@@ -29,13 +29,13 @@ async def consume_limited_call():
 
 def extract_hammertime_timestamps(content: str) -> List[datetime.datetime]:
     return [
-        datetime.datetime.fromtimestamp(stamp)
+        datetime.datetime.fromtimestamp(stamp, datetime.timezone.utc)
         for stamp in set(int(val) for val in re.findall("<t:(\d+):\w>", content))
     ]
 
 
 def generate_hammertime_timestamp(dtime: datetime.datetime) -> str:
-    return f"<t:{int(dtime.timestamp())}:f>"
+    return f"<t:{int(dtime.timestamp())}:R>"
 
 
 async def validate_message_tags(
