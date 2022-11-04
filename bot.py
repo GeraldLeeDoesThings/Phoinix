@@ -744,13 +744,14 @@ async def guide(ctx: discord.ApplicationContext, name: str):
     if name in bot.guide_bindings:
         async with bot.guide_lock:
             first_response = True
-            for index in sorted(bot.guide_bindings[name].keys()):
-                msg = bot.guide_bindings[name][index]
+            guide_seq = [bot.guide_bindings[name][index].attachments[0].url for index in sorted(bot.guide_bindings[name].keys())]
+            for index in range(0, len(guide_seq), 10):
+                embeds = [discord.Embed(url=url, type="image") for url in guide_seq[index:index + 10]]
                 if first_response:
-                    await ctx.send_response(msg.attachments[0].url)
+                    await ctx.send_response(embeds=embeds)
                     first_response = False
                 else:
-                    await ctx.send_followup(msg.attachments[0].url)
+                    await ctx.send_followup(embeds=embeds)
     else:
         await ctx.send_response(f"No guide exists with the name: {name}")
 
