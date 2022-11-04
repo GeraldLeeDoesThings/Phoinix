@@ -745,8 +745,13 @@ async def guide(ctx: discord.ApplicationContext, name: str):
         async with bot.guide_lock:
             first_response = True
             guide_seq = [bot.guide_bindings[name][index].attachments[0].url for index in sorted(bot.guide_bindings[name].keys())]
+            def build_embed(url: str) -> discord.Embed:
+                embed = discord.Embed(url=url)
+                embed.set_image(url=url)
+                return embed
+
             for index in range(0, len(guide_seq), 10):
-                embeds = [discord.Embed(url=url, type="image", description="Guide Image") for url in guide_seq[index:index + 10]]
+                embeds = [build_embed(url) for url in guide_seq[index:index + 10]]
                 if first_response:
                     await ctx.send_response(embeds=embeds)
                     first_response = False
