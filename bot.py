@@ -82,7 +82,6 @@ class PhoinixBot(discord.Bot):
             default_lifetime = DEFAULT_MESSAGE_LIFETIME
         if minimum_lifetime is None:
             minimum_lifetime = MIN_MESSAGE_LIFETIME
-        now = datetime.datetime.now()
         await message.remove_reaction(DELETING_SOON_EMOJI, self.user)
         await message.add_reaction(MONITORING_EMOJI)
         while True:
@@ -431,6 +430,10 @@ class PhoinixBot(discord.Bot):
         elif command.startswith("fixnames"):
             for member in self.PEBE.members:
                 await self.fix_name(member)
+        elif command.startswith("purge"):
+            for member in self.PEBE.members:
+                if any(role.id == ROLE_ID_MAP["Not Verified"] for role in member.roles):
+                    await member.edit(roles=[])
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
