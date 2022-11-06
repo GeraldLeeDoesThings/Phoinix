@@ -433,7 +433,10 @@ class PhoinixBot(discord.Bot):
         elif command.startswith("purge"):
             for member in self.PEBE.members:
                 if any(role.id == ROLE_ID_MAP["Not Verified"] for role in member.roles):
-                    await member.edit(roles=[])
+                    try:
+                        await member.edit(roles=[])
+                    except discord.Forbidden:
+                        print(f"Tried to purge {member.display_name} but couldn't")
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
