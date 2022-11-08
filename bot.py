@@ -434,7 +434,10 @@ class PhoinixBot(discord.Bot):
             exit(0)
         elif command.startswith("fixnames"):
             for member in self.PEBE.members:
-                await self.fix_name(member)
+                try:
+                    await self.fix_name(member)
+                except discord.Forbidden:
+                    print(f"Could not update {member.display_name}, ask them to fix it themself!")
         elif command.startswith("purge"):
             for member in self.PEBE.members:
                 if any(role.id == ROLE_ID_MAP["Not Verified"] for role in member.roles):
