@@ -402,11 +402,9 @@ class PhoinixBot(discord.Bot):
                 return
             elif mname.startswith((first[:3], first.lower())):
                 splitname = mname.split(" ")
-                print(f"{mname} to {first} {' '.join(splitname[1:])}"[:32])
-                # await member.edit(nick=f"{first} {' '.join(splitname[1:])}"[:32])
+                await member.edit(nick=f"{first} {' '.join(splitname[1:])}"[:32])
             else:
-                print(f"{mname} to {first} | {mname}")
-                # await member.edit(nick=f"{first} | {mname}"[:32])
+                await member.edit(nick=f"{first} | {mname}"[:32])
 
     async def parse_console_command(self, command):
         if command.startswith("send"):
