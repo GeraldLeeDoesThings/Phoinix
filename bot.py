@@ -395,11 +395,18 @@ class PhoinixBot(discord.Bot):
         nspair = get_user_ffxiv_name_server(member.id)
         if nspair is not None:
             name, _ = nspair
-            first, last = name.split(" ")
-            if not (
-                first[:3] in member.display_name or last[:3] in member.display_name
-            ):
-                await member.edit(nick=f"{member.display_name[:26]} [{first[:3]}]")
+            first, last = name.split(" ")  # type: str
+            mname = member.display_name
+            mname = mname.replace(f"[{first[:3]}]", "")
+            if mname.startswith(first):
+                return
+            elif mname.startswith((first[:3], first.lower())):
+                splitname = mname.split(" ")
+                print(f"{mname} to {first} {' '.join(splitname[1:])}"[:32])
+                # await member.edit(nick=f"{first} {' '.join(splitname[1:])}"[:32])
+            else:
+                print(f"{mname} to {first} | {mname}")
+                # await member.edit(nick=f"{first} | {mname}"[:32])
 
     async def parse_console_command(self, command):
         if command.startswith("send"):
@@ -427,7 +434,7 @@ class PhoinixBot(discord.Bot):
                     await member.add_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
         elif command.startswith("shutdown"):
             exit(0)
-        elif command.startswith("fixnames"):
+        elif command.startswith("tfixnames"):
             for member in self.PEBE.members:
                 await self.fix_name(member)
         elif command.startswith("purge"):
