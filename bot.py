@@ -434,7 +434,7 @@ class PhoinixBot(discord.Bot):
                     await member.add_roles(discord.Object(ROLE_ID_MAP["Not Verified"]))
         elif command.startswith("shutdown"):
             exit(0)
-        elif command.startswith("tfixnames"):
+        elif command.startswith("fixnames"):
             for member in self.PEBE.members:
                 await self.fix_name(member)
         elif command.startswith("purge"):
