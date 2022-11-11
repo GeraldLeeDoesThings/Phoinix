@@ -461,7 +461,7 @@ class VerificationModal(discord.ui.Modal):
 
     async def callback(self, interaction: discord.Interaction):
         name = " ".join(part.capitalize() for part in self.children[0].value.split(" "))
-        server = self.children[1].value.split(" ")[0]
+        server = self.children[1].value.split(" ")[0].capitalize()
         fakedefer = await interaction.response.send_message(
             "Searching...", ephemeral=True
         )  # type: discord.Interaction
