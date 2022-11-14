@@ -416,7 +416,7 @@ class PhoinixBot(discord.Bot):
             except:
                 pass
         elif command.startswith("save"):
-            with open("verification_map.json", "w") as dumpfile:
+            with open("data/verification_map.json", "w") as dumpfile:
                 json.dump(verification_map, dumpfile, indent=4)
         elif command.startswith("mark"):
             for member in self.PEBE.members:
@@ -608,7 +608,7 @@ async def listguides(ctx: discord.ApplicationContext):
 
 
 update_verification_map()
-with open("verification_map.json", "r") as loadfile:
+with open("data/verification_map.json", "r") as loadfile:
     str_verification_map = json.load(
         loadfile
     )  # type: Dict[str, Dict[str, Union[bool, int, str]]]
@@ -616,5 +616,5 @@ with open("verification_map.json", "r") as loadfile:
         verification_map[int(key)] = str_verification_map[key]
 
 if __name__ == "__main__":
-    with open("token", "r") as token:
+    with open("secrets/token", "r") as token:
         bot.run(token.read())

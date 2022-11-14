@@ -8,7 +8,7 @@ import re
 import requests
 from typing import *
 
-with open("xivapikey") as key:
+with open("secrets/xivapikey") as key:
     xivapikey = key.read()
 
 MAX_RATE = 10
@@ -143,7 +143,7 @@ async def refresh_calls_loop():
 
 
 def update_verification_map():
-    with open("verification_map.json", "r") as vmap:
+    with open("data/verification_map.json", "r") as vmap:
         ver_map = json.load(vmap)
     print(len(ver_map.keys()))
     for key in ver_map.keys():
@@ -155,7 +155,7 @@ def update_verification_map():
                 "server": None,
                 "valid": False,
             }
-    with open("verification_map.json", "w") as vmap:
+    with open("data/verification_map.json", "w") as vmap:
         json.dump(ver_map, vmap, indent=4)
 
 

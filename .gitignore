@@ -2,3 +2,9 @@
 /verification_map*
 /xivapikey*
 /fflogs_auth.json
+/data/*
+/secrets/*
+!*/*README.MD
+.idea/*
+__pycache__/*
+venv/*
