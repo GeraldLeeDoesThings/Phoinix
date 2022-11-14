@@ -12,6 +12,7 @@ import threading
 from typing import *
 from utils import *
 import uuid
+from verification import *
 
 # Maps User ID (Discord) -> (Token, Character ID (FFXIV))
 verification_map = {}  # type: Dict[int, Dict[str, Union[bool, int, str]]]
@@ -287,7 +288,7 @@ class PhoinixBot(discord.Bot):
         await self.compute_guide_bindings()
         if self.first_ready:
             print("Adding verification view")
-            self.add_view(VerificationView())
+            self.add_view(VerificationView(bot))
             asyncio.create_task(refresh_calls_loop())
             for moderated_channel_id in MODERATED_CHANNEL_IDS:
                 channel = self.get_channel(
@@ -452,185 +453,6 @@ class PhoinixBot(discord.Bot):
             await maybe_channel.send(message)
 
 
-class VerificationModal(discord.ui.Modal):
-    def __init__(self):
-        super().__init__(title="Register Character Data")
-
-        self.add_item(discord.ui.InputText(label="Full Character Name"))
-        self.add_item(discord.ui.InputText(label="Character Server"))
-
-    async def callback(self, interaction: discord.Interaction):
-        name = " ".join(part.capitalize() for part in self.children[0].value.split(" "))
-        server = self.children[1].value.split(" ")[0].capitalize()
-        fakedefer = await interaction.response.send_message(
-            "Searching...", ephemeral=True
-        )  # type: discord.Interaction
-        if await register_user(
-            interaction.user.id,
-            name,
-            server,
-        ):
-            await fakedefer.edit_original_response(
-                content=(
-                    f"Character found! Add `{get_user_token(interaction.user.id)}` to"
-                    " your character profile on the Lodestone, then click the Verify"
-                    " button. If you cannot copy your token, try copying from"
-                    f" {ECHO_TOKEN_URL}{get_user_token(interaction.user.id)}\nYour"
-                    " character profile can be found here:"
-                    " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
-                ),
-            )
-            return
-        await fakedefer.edit_original_response(
-            content=(
-                f"Could not find character with:\nName: {name}\nServer:"
-                f" {server}\n\nEnsure that the name and server are correct. Name should"
-                " be first and last (ex Lerald Gee), and server should only include"
-                " the server (ex Famfrit)."
-            ),
-        )
-
-
-class VerificationView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(
-        label="Register", custom_id="register", style=discord.ButtonStyle.primary
-    )
-    async def register(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await interaction.response.send_modal(VerificationModal())
-
-    @discord.ui.button(
-        label="Verify", custom_id="verify", style=discord.ButtonStyle.primary
-    )
-    async def verify(self, button: discord.ui.Button, interaction: discord.Interaction):
-        response = await interaction.response.send_message(
-            "Verifying...", ephemeral=True
-        )  # type: discord.Interaction
-        if not known_discord_id(interaction.user.id):
-            await response.edit_original_response(
-                content=(
-                    "You must register first! Click the Register button and follow the"
-                    " instructions."
-                ),
-            )
-            return
-        if verification_map[interaction.user.id]["valid"]:
-            await response.edit_original_response(content="You are already verified!")
-            return
-        result = full_validate(verification_map[interaction.user.id])
-        if type(result) == str:
-            await response.edit_original_response(content=result)
-        else:
-            try:
-                member = await bot.fetch_member(interaction.user.id)
-                await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
-                if ROLE_ID_MAP["Not Verified"] in [role.id for role in member.roles]:
-                    await member.remove_roles(
-                        discord.Object(ROLE_ID_MAP["Not Verified"])
-                    )
-                verification_map[interaction.user.id] = result
-                await bot.fix_name(member)
-                await response.edit_original_response(content="Successfully verified!")
-            except discord.HTTPException:
-                print("Adding role failed!")
-                await response.edit_original_response(
-                    content=(
-                        "Something has gone wrong (not your fault). Click the Verify"
-                        " button again, and if errors continue, contact the staff."
-                    )
-                )
-
-    @discord.ui.button(
-        label="Verify BA Clear",
-        custom_id="verify_ba",
-        style=discord.ButtonStyle.primary,
-    )
-    async def verify_ba_clear(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await self.verify_achievement(
-            button,
-            interaction,
-            ACHIEVEMENT_ID_MAP["BA Clear"],
-            ROLE_ID_MAP["Cleared BA"],
-        )
-
-    @discord.ui.button(
-        label="Verify DRS Clear",
-        custom_id="verify_drs",
-        style=discord.ButtonStyle.primary,
-    )
-    async def verify_drs_clear(
-        self, button: discord.ui.Button, interaction: discord.Interaction
-    ):
-        await self.verify_achievement(
-            button,
-            interaction,
-            ACHIEVEMENT_ID_MAP["DRS Clear"],
-            ROLE_ID_MAP["Cleared DRS"],
-        )
-
-    async def verify_achievement(
-        self,
-        button: discord.ui.Button,
-        interaction: discord.Interaction,
-        id: int,
-        role: int,
-    ):
-        if not known_discord_id(interaction.user.id):
-            await interaction.response.send_message(
-                "You are not registered! Click the Register button, follow the"
-                " instructions, then click the Verify button, then try this button"
-                " again.",
-                ephemeral=True,
-            )
-        elif not verification_map[interaction.user.id]["valid"]:
-            await interaction.response.send_message(
-                "You are not verified! Click the Verify button, then try this button"
-                " again.",
-                ephemeral=True,
-            )
-        else:
-            response = await interaction.response.send_message(
-                "Checking achievements...", ephemeral=True
-            )  # type: discord.Interaction
-            has = user_has_achievement(get_user_ffxiv_id(interaction.user.id), id)
-            if has is None:
-                await response.edit_original_response(
-                    content=(
-                        "Your achievements are not public! Set them to public, then try"
-                        " again."
-                    )
-                )
-            elif has:
-                try:
-                    member = await bot.fetch_member(interaction.user.id)
-                    await member.add_roles(discord.Object(role))
-                    await response.edit_original_response(
-                        content="Role successfully added!"
-                    )
-                except discord.HTTPException:
-                    print("Adding role failed!")
-                    await response.edit_original_response(
-                        content=(
-                            "Something has gone wrong (not your fault). Click the"
-                            " Verify button again, and if errors continue, contact"
-                            " the staff."
-                        )
-                    )
-            else:
-                await response.edit_original_response(
-                    content=(
-                        "You do not have an achievement indicating that you have"
-                        " cleared!"
-                    )
-                )
-
-
 intents = discord.Intents.all()
 
 bot = PhoinixBot(intents=intents)
@@ -639,7 +461,7 @@ bot = PhoinixBot(intents=intents)
 @bot.slash_command()
 async def summonverify(ctx: discord.ApplicationContext):
     if ctx.author.id == 172451187264716800:
-        await ctx.channel.send(view=VerificationView())
+        await ctx.channel.send(view=VerificationView(bot))
         await ctx.send_response("Nya :3", ephemeral=True)
     else:
         await ctx.send_response("Only Lerald can run this.", ephemeral=True)
