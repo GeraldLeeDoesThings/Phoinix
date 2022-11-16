@@ -74,6 +74,8 @@ class VerificationView(discord.ui.View):
             return
         if globals.verification_map[interaction.user.id]["valid"]:
             await response.edit_original_response(content="You are already verified!")
+            member = await self.bot.fetch_member(interaction.user.id)
+            await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
             return
         result = bot.full_validate(globals.verification_map[interaction.user.id])
         if type(result) == str:
