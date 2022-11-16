@@ -1,4 +1,4 @@
-from bot import *
+import bot
 from const import *
 import discord
 
@@ -16,17 +16,17 @@ class VerificationModal(discord.ui.Modal):
         fakedefer = await interaction.response.send_message(
             "Searching...", ephemeral=True
         )  # type: discord.Interaction
-        if await register_user(
-                interaction.user.id,
-                name,
-                server,
+        if await bot.register_user(
+            interaction.user.id,
+            name,
+            server,
         ):
             await fakedefer.edit_original_response(
                 content=(
-                    f"Character found! Add `{get_user_token(interaction.user.id)}` to"
-                    " your character profile on the Lodestone, then click the Verify"
-                    " button. If you cannot copy your token, try copying from"
-                    f" {ECHO_TOKEN_URL}{get_user_token(interaction.user.id)}\nYour"
+                    f"Character found! Add `{bot.get_user_token(interaction.user.id)}`"
+                    " to your character profile on the Lodestone, then click the"
+                    " Verify button. If you cannot copy your token, try copying from"
+                    f" {ECHO_TOKEN_URL}{bot.get_user_token(interaction.user.id)}\nYour"
                     " character profile can be found here:"
                     " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
                 ),
@@ -51,7 +51,7 @@ class VerificationView(discord.ui.View):
         label="Register", custom_id="register", style=discord.ButtonStyle.primary
     )
     async def register(
-            self, button: discord.ui.Button, interaction: discord.Interaction
+        self, button: discord.ui.Button, interaction: discord.Interaction
     ):
         await interaction.response.send_modal(VerificationModal())
 
@@ -62,7 +62,7 @@ class VerificationView(discord.ui.View):
         response = await interaction.response.send_message(
             "Verifying...", ephemeral=True
         )  # type: discord.Interaction
-        if not known_discord_id(interaction.user.id):
+        if not bot.known_discord_id(interaction.user.id):
             await response.edit_original_response(
                 content=(
                     "You must register first! Click the Register button and follow the"
@@ -70,10 +70,10 @@ class VerificationView(discord.ui.View):
                 ),
             )
             return
-        if verification_map[interaction.user.id]["valid"]:
+        if bot.verification_map[interaction.user.id]["valid"]:
             await response.edit_original_response(content="You are already verified!")
             return
-        result = full_validate(verification_map[interaction.user.id])
+        result = bot.full_validate(bot.verification_map[interaction.user.id])
         if type(result) == str:
             await response.edit_original_response(content=result)
         else:
@@ -84,7 +84,7 @@ class VerificationView(discord.ui.View):
                     await member.remove_roles(
                         discord.Object(ROLE_ID_MAP["Not Verified"])
                     )
-                verification_map[interaction.user.id] = result
+                bot.verification_map[interaction.user.id] = result
                 await self.bot.fix_name(member)
                 await response.edit_original_response(content="Successfully verified!")
             except discord.HTTPException:
@@ -102,7 +102,7 @@ class VerificationView(discord.ui.View):
         style=discord.ButtonStyle.primary,
     )
     async def verify_ba_clear(
-            self, button: discord.ui.Button, interaction: discord.Interaction
+        self, button: discord.ui.Button, interaction: discord.Interaction
     ):
         await self.verify_achievement(
             button,
@@ -117,7 +117,7 @@ class VerificationView(discord.ui.View):
         style=discord.ButtonStyle.primary,
     )
     async def verify_drs_clear(
-            self, button: discord.ui.Button, interaction: discord.Interaction
+        self, button: discord.ui.Button, interaction: discord.Interaction
     ):
         await self.verify_achievement(
             button,
@@ -127,20 +127,20 @@ class VerificationView(discord.ui.View):
         )
 
     async def verify_achievement(
-            self,
-            button: discord.ui.Button,
-            interaction: discord.Interaction,
-            id: int,
-            role: int,
+        self,
+        button: discord.ui.Button,
+        interaction: discord.Interaction,
+        id: int,
+        role: int,
     ):
-        if not known_discord_id(interaction.user.id):
+        if not bot.known_discord_id(interaction.user.id):
             await interaction.response.send_message(
                 "You are not registered! Click the Register button, follow the"
                 " instructions, then click the Verify button, then try this button"
                 " again.",
                 ephemeral=True,
             )
-        elif not verification_map[interaction.user.id]["valid"]:
+        elif not bot.verification_map[interaction.user.id]["valid"]:
             await interaction.response.send_message(
                 "You are not verified! Click the Verify button, then try this button"
                 " again.",
@@ -150,7 +150,9 @@ class VerificationView(discord.ui.View):
             response = await interaction.response.send_message(
                 "Checking achievements...", ephemeral=True
             )  # type: discord.Interaction
-            has = user_has_achievement(get_user_ffxiv_id(interaction.user.id), id)
+            has = bot.user_has_achievement(
+                bot.get_user_ffxiv_id(interaction.user.id), id
+            )
             if has is None:
                 await response.edit_original_response(
                     content=(
@@ -181,4 +183,3 @@ class VerificationView(discord.ui.View):
                         " cleared!"
                     )
                 )
-
