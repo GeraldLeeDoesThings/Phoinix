@@ -1,3 +1,5 @@
+import globals
+
 import asyncio
 import bs4
 from const import *
@@ -14,37 +16,34 @@ from utils import *
 import uuid
 from verification import *
 
-# Maps User ID (Discord) -> (Token, Character ID (FFXIV))
-verification_map = {}  # type: Dict[int, Dict[str, Union[bool, int, str]]]
-
 
 def known_discord_id(id: int) -> bool:
-    return verification_map.get(id, None) is not None
+    return globals.verification_map.get(id, None) is not None
 
 
 def get_user_token(id: int) -> str:
     if known_discord_id(id):
-        return verification_map[id]["token"]
+        return globals.verification_map[id]["token"]
     else:
         return secrets.token_urlsafe(8)
 
 
 def get_user_ffxiv_id(id: int) -> Optional[int]:
     if known_discord_id(id):
-        return verification_map[id]["id"]
+        return globals.verification_map[id]["id"]
     return None
 
 
 def get_user_ffxiv_name_server(id: int) -> Optional[Tuple[str, str]]:
     if known_discord_id(id):
-        maybe_name = verification_map[id]["name"]
+        maybe_name = globals.verification_map[id]["name"]
         if maybe_name is None:
-            name, server = extract_name_server(verification_map[id]["id"])
-            verification_map[id]["name"] = name
-            verification_map[id]["server"] = server
+            name, server = extract_name_server(globals.verification_map[id]["id"])
+            globals.verification_map[id]["name"] = name
+            globals.verification_map[id]["server"] = server
             return name, server
         else:
-            return verification_map[id]["name"], verification_map[id]["server"]
+            return globals.verification_map[id]["name"], globals.verification_map[id]["server"]
     return None
 
 
@@ -54,7 +53,7 @@ async def register_user(did: int, name: str, server: str) -> bool:
         return False
     search["valid"] = False
     search["token"] = get_user_token(did)
-    verification_map[did] = search
+    globals.verification_map[did] = search
     return True
 
 
@@ -417,7 +416,7 @@ class PhoinixBot(discord.Bot):
                 pass
         elif command.startswith("save"):
             with open("data/verification_map.json", "w") as dumpfile:
-                json.dump(verification_map, dumpfile, indent=4)
+                json.dump(globals.verification_map, dumpfile, indent=4)
         elif command.startswith("mark"):
             for member in self.PEBE.members:
                 roles = [role.id for role in member.roles]
@@ -438,7 +437,10 @@ class PhoinixBot(discord.Bot):
                 try:
                     await self.fix_name(member)
                 except discord.Forbidden:
-                    print(f"Could not update {member.display_name}, ask them to fix it themself!")
+                    print(
+                        f"Could not update {member.display_name}, ask them to fix it"
+                        " themself!"
+                    )
         elif command.startswith("purge"):
             for member in self.PEBE.members:
                 if any(role.id == ROLE_ID_MAP["Not Verified"] for role in member.roles):
@@ -472,7 +474,7 @@ async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Me
     if known_discord_id(member.id):
         warning = (
             ""
-            if verification_map[member.id]["valid"]
+            if globals.verification_map[member.id]["valid"]
             else "WARNING [POTENTIALLY INVALID NAME]: "
         )
         name, server = get_user_ffxiv_name_server(member.id)
@@ -495,10 +497,10 @@ async def search(
     finds = []  # type: List[Tuple[str, str, discord.Member]]
     await ctx.response.defer(ephemeral=True)
     foundcount = 0
-    for did in verification_map:
+    for did in globals.verification_map:
         warning = (
             ""
-            if verification_map[did]["valid"]
+            if globals.verification_map[did]["valid"]
             else "WARNING [POTENTIALLY INVALID NAME]: "
         )
         if foundcount == MAX_SEARCH_VALUES:
@@ -580,14 +582,18 @@ async def guide(ctx: discord.ApplicationContext, name: str):
     if name in bot.guide_bindings:
         async with bot.guide_lock:
             first_response = True
-            guide_seq = [bot.guide_bindings[name][index].attachments[0].url for index in sorted(bot.guide_bindings[name].keys())]
+            guide_seq = [
+                bot.guide_bindings[name][index].attachments[0].url
+                for index in sorted(bot.guide_bindings[name].keys())
+            ]
+
             def build_embed(url: str) -> discord.Embed:
                 embed = discord.Embed(url=url)
                 embed.set_image(url=url)
                 return embed
 
             for index in range(0, len(guide_seq), 10):
-                embeds = [build_embed(url) for url in guide_seq[index:index + 10]]
+                embeds = [build_embed(url) for url in guide_seq[index : index + 10]]
                 if first_response:
                     await ctx.send_response(embeds=embeds)
                     first_response = False
@@ -613,7 +619,7 @@ with open("data/verification_map.json", "r") as loadfile:
         loadfile
     )  # type: Dict[str, Dict[str, Union[bool, int, str]]]
     for key in str_verification_map.keys():
-        verification_map[int(key)] = str_verification_map[key]
+        globals.verification_map[int(key)] = str_verification_map[key]
 
 if __name__ == "__main__":
     with open("secrets/token", "r") as token:

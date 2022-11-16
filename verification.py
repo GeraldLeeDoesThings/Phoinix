@@ -1,3 +1,5 @@
+import globals
+
 import bot
 from const import *
 import discord
@@ -70,10 +72,10 @@ class VerificationView(discord.ui.View):
                 ),
             )
             return
-        if bot.verification_map[interaction.user.id]["valid"]:
+        if globals.verification_map[interaction.user.id]["valid"]:
             await response.edit_original_response(content="You are already verified!")
             return
-        result = bot.full_validate(bot.verification_map[interaction.user.id])
+        result = bot.full_validate(globals.verification_map[interaction.user.id])
         if type(result) == str:
             await response.edit_original_response(content=result)
         else:
@@ -84,7 +86,7 @@ class VerificationView(discord.ui.View):
                     await member.remove_roles(
                         discord.Object(ROLE_ID_MAP["Not Verified"])
                     )
-                bot.verification_map[interaction.user.id] = result
+                globals.verification_map[interaction.user.id] = result
                 await self.bot.fix_name(member)
                 await response.edit_original_response(content="Successfully verified!")
             except discord.HTTPException:
@@ -140,7 +142,7 @@ class VerificationView(discord.ui.View):
                 " again.",
                 ephemeral=True,
             )
-        elif not bot.verification_map[interaction.user.id]["valid"]:
+        elif not globals.verification_map[interaction.user.id]["valid"]:
             await interaction.response.send_message(
                 "You are not verified! Click the Verify button, then try this button"
                 " again.",
