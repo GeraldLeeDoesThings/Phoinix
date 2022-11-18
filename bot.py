@@ -43,7 +43,10 @@ def get_user_ffxiv_name_server(id: int) -> Optional[Tuple[str, str]]:
             globals.verification_map[id]["server"] = server
             return name, server
         else:
-            return globals.verification_map[id]["name"], globals.verification_map[id]["server"]
+            return (
+                globals.verification_map[id]["name"],
+                globals.verification_map[id]["server"],
+            )
     return None
 
 
@@ -135,14 +138,14 @@ class PhoinixBot(discord.Bot):
                     )
                 except:
                     pass
-                asyncio.create_task(
+                schedule_task(
                     trigger_later(check_signal, (expiration_time - now).total_seconds())
                 )
                 await wait_and_clear(check_signal)
             else:
                 # More than a day away, schedule a check for just under a day away from the expiration time
                 await message.add_reaction(MONITORING_EMOJI)
-                asyncio.create_task(
+                schedule_task(
                     trigger_later(
                         check_signal,
                         (
@@ -184,7 +187,7 @@ class PhoinixBot(discord.Bot):
                 bad_message = False
                 break
         if bad_message:
-            asyncio.create_task(
+            schedule_task(
                 m.reply(
                     "Please ensure messages in this channel mention at least one of"
                     " DRS/BA Learners/Reclears. Your message will be deleted in 30"
@@ -192,7 +195,7 @@ class PhoinixBot(discord.Bot):
                     delete_after=30,
                 )
             )
-            asyncio.create_task(m.delete(delay=30))
+            schedule_task(m.delete(delay=30))
 
     async def fetch_member(self, id: int) -> Optional[discord.Member]:
         try:
@@ -288,7 +291,7 @@ class PhoinixBot(discord.Bot):
         if self.first_ready:
             print("Adding verification view")
             self.add_view(VerificationView(bot))
-            asyncio.create_task(refresh_calls_loop())
+            schedule_task(refresh_calls_loop())
             for moderated_channel_id in MODERATED_CHANNEL_IDS:
                 channel = self.get_channel(
                     moderated_channel_id
@@ -296,7 +299,7 @@ class PhoinixBot(discord.Bot):
                 async for moderated_message in channel.history(after=GRACE_TIME):
                     listener_event = asyncio.Event()
                     self.moderated_messages[moderated_message.id] = listener_event
-                    asyncio.create_task(
+                    schedule_task(
                         self.moderate_message(moderated_message, listener_event)
                     )
             self.first_ready = False
@@ -321,7 +324,7 @@ class PhoinixBot(discord.Bot):
         if id in MODERATED_CHANNEL_IDS:
             listener_event = asyncio.Event()
             self.moderated_messages[message.id] = listener_event
-            asyncio.create_task(self.moderate_message(message, listener_event))
+            schedule_task(self.moderate_message(message, listener_event))
 
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         if payload.channel_id == CHANNEL_ID_MAP["roles"]:

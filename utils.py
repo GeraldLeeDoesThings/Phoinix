@@ -3,9 +3,11 @@ import bs4
 from const import *
 import datetime
 import discord
+import globals
 import json
 import re
 import requests
+import types
 from typing import *
 
 with open("secrets/xivapikey") as key:
@@ -54,14 +56,14 @@ async def validate_message_tags(
             bad_message = False
             break
     if bad_message:
-        asyncio.create_task(
+        schedule_task(
             m.reply(
                 "Please ensure messages in this channel mention at least one of DRS/BA"
                 " Learners/Reclears. Your message will be deleted in 30 seconds.",
                 delete_after=30,
             )
         )
-        asyncio.create_task(m.delete(delay=30))
+        schedule_task(m.delete(delay=30))
 
 
 def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int]]:
@@ -139,7 +141,7 @@ async def refresh_calls_loop():
     async with HAS_CALLS:
         CALLS_REMAINING = MAX_RATE
         HAS_CALLS.notify(MAX_RATE)
-    asyncio.create_task(refresh_calls_loop())
+    schedule_task(refresh_calls_loop())
 
 
 def update_verification_map():
@@ -198,3 +200,11 @@ async def trigger_later(event: asyncio.Event, delay: float):
 async def wait_and_clear(event: asyncio.Event):
     await event.wait()
     event.clear()
+
+
+def schedule_task(coro):
+    task = asyncio.create_task(coro)
+    globals.background_tasks.add(task)
+    task.add_done_callback(globals.background_tasks.discard)
+
+
