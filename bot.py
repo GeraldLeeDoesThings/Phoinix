@@ -87,6 +87,7 @@ class PhoinixBot(discord.Bot):
             minimum_lifetime = MIN_MESSAGE_LIFETIME
         await message.remove_reaction(DELETING_SOON_EMOJI, self.user)
         await message.add_reaction(MONITORING_EMOJI)
+        notified = False
         while True:
             try:
                 message = await message.channel.fetch_message(message.id)
@@ -126,24 +127,27 @@ class PhoinixBot(discord.Bot):
                 # Not quite time to delete the message, but less than a day away. Mark the message.
                 await message.add_reaction(DELETING_SOON_EMOJI)
                 author = message.author  # type: discord.Member
-                dm_channel = author.dm_channel  # type: Optional[discord.DMChannel]
-                if dm_channel is None:
-                    dm_channel = await author.create_dm()
-                try:
-                    await dm_channel.send(
-                        f"Your message {message.jump_url} will be deleted in"
-                        f" {generate_hammertime_timestamp(expiration_time)} unless you"
-                        f" react with {DO_NOT_DELETE_EMOJI}\n"
-                        "Please only react if the message should not be deleted."
-                    )
-                except:
-                    pass
+                if not notified:
+                    dm_channel = author.dm_channel  # type: Optional[discord.DMChannel]
+                    if dm_channel is None:
+                        dm_channel = await author.create_dm()
+                    try:
+                        await dm_channel.send(
+                            f"Your message {message.jump_url} will be deleted in"
+                            f" {generate_hammertime_timestamp(expiration_time)} unless you"
+                            f" react with {DO_NOT_DELETE_EMOJI}\n"
+                            "Please only react if the message should not be deleted."
+                        )
+                        notified = True
+                    except:
+                        pass
                 schedule_task(
                     trigger_later(check_signal, (expiration_time - now).total_seconds())
                 )
                 await wait_and_clear(check_signal)
             else:
                 # More than a day away, schedule a check for just under a day away from the expiration time
+                notified = False
                 await message.add_reaction(MONITORING_EMOJI)
                 schedule_task(
                     trigger_later(
