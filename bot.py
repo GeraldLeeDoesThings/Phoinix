@@ -511,7 +511,7 @@ async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Me
         await ctx.response.send_message("That user is not registered.", ephemeral=True)
 
 
-@bot.message_command(name="Register Message as BA Recruiting Post")
+@bot.message_command(name="Register as BA Recruiting Post")
 async def register_ba_recruiting(
     ctx: discord.ApplicationContext, message: discord.Message
 ):
