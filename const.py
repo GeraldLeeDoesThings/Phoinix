@@ -49,6 +49,8 @@ LODESTONE_ACHIEVEMENT_BASE_URL = "/achievement/detail/"
 
 XIVAPI_BASE_URL = "https://xivapi.com/"
 
+HAMMERTIME_TIMESTAMP_URL = "https://hammertime.cyou/"
+
 GRACE_TIME = datetime.datetime.fromisoformat("2022-11-03T08:51:35.333725+00:00")
 HALF_DAY = datetime.timedelta(days=0.5)
 
@@ -71,3 +73,31 @@ MODERATED_CHANNEL_IDS = [
     CHANNEL_ID_MAP["drs-gauging-interest"],
     CHANNEL_ID_MAP["drs-recruiting"],
 ]
+
+BA_RECRUITING_CHANNELS = [
+    #  CHANNEL_ID_MAP["ba-recruiting"],
+    CHANNEL_ID_MAP["bot-testing"],
+]
+
+BA_RED_DPS = "Red DPS"
+BA_BLUE_DPS = "Blue DPS"
+BA_HEALER = "Healer"
+BA_MAIN_TANK = "Main Tank"
+BA_PRECEPTOR = "Preceptor"
+BA_FEINT = "Feint"
+BA_SPIRIT_DART = "Spirit Dart"
+
+BA_ANY_TANK = [BA_MAIN_TANK, BA_BLUE_DPS]
+BA_ANY_DPS = [BA_RED_DPS, BA_BLUE_DPS]
+BA_ANY_NON_SPECIAL = [BA_ANY_DPS, BA_BLUE_DPS, BA_HEALER]
+
+BA_ROLE_EMOJI_MAPPING = {
+    BA_RED_DPS: discord.PartialEmoji.from_str("<:DPS:1041624309514383370>"),
+    BA_BLUE_DPS: discord.PartialEmoji.from_str("<:Tank:1041624337544912937>"),
+    BA_HEALER: discord.PartialEmoji.from_str("<:Healer:1041624323112304651>"),
+    BA_MAIN_TANK: discord.PartialEmoji.from_str("<:MainTank:1041623723083583508>"),
+    BA_PRECEPTOR: discord.PartialEmoji.from_str("<:Perception:1029110537042284554>"),
+    BA_FEINT: discord.PartialEmoji.from_str("<:Feint:1029080270105747576>"),
+    BA_SPIRIT_DART: discord.PartialEmoji.from_str("<:SpiritDart:1029080237369204787>"),
+}
+PARTY_LEAD_EMOJI = discord.PartialEmoji.from_str("<:PartyLeader:1041624285850124338>")

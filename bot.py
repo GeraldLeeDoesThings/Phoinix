@@ -1,6 +1,7 @@
 import globals
 
 import asyncio
+import ba_recruiting
 import bs4
 from const import *
 import datetime
@@ -295,6 +296,9 @@ class PhoinixBot(discord.Bot):
         if self.first_ready:
             print("Adding verification view")
             self.add_view(VerificationView(bot))
+            for key in globals.ba_run_post_map.keys():
+                run = globals.ba_run_post_map[key]
+                self.add_view(ba_recruiting.BARunView(run), message_id=run.roster_embed_id)
             schedule_task(refresh_calls_loop())
             for moderated_channel_id in MODERATED_CHANNEL_IDS:
                 channel = self.get_channel(
@@ -341,6 +345,15 @@ class PhoinixBot(discord.Bot):
             and payload.message_id in self.moderated_messages
         ):
             self.moderated_messages[payload.message_id].set()
+
+        if payload.channel_id in BA_RECRUITING_CHANNELS and payload.message_id in globals.ba_run_post_map:
+            chan = self.get_channel(payload.channel_id)  # type: discord.TextChannel
+            msg = await chan.fetch_message(payload.message_id)
+            run = globals.ba_run_post_map[payload.message_id]
+            newtimestamps = extract_hammertime_timestamps(msg.content)
+            if len(newtimestamps) > 0:
+                run.run_time = max(newtimestamps)
+                run.signal.set()
 
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.user.id:
@@ -394,6 +407,9 @@ class PhoinixBot(discord.Bot):
             self.moderated_messages[payload.message_id].set()
             self.moderated_messages.pop(payload.message_id)
 
+        if payload.channel_id in BA_RECRUITING_CHANNELS and payload.message_id in globals.ba_run_post_map:
+            del globals.ba_run_post_map[payload.message_id]
+
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.display_name != after.display_name:
             await self.fix_name(after)
@@ -424,6 +440,11 @@ class PhoinixBot(discord.Bot):
         elif command.startswith("save"):
             with open("data/verification_map.json", "w") as dumpfile:
                 json.dump(globals.verification_map, dumpfile, indent=4)
+            with open("data/ba_run_post_map.json", "w") as dumpfile:
+                to_save = {}
+                for key in globals.ba_run_post_map.keys():
+                    to_save[str(key)] = globals.ba_run_post_map[key].to_dict()
+                json.dump(to_save, dumpfile, indent=4)
         elif command.startswith("mark"):
             for member in self.PEBE.members:
                 roles = [role.id for role in member.roles]
@@ -488,6 +509,59 @@ async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Me
         await ctx.response.send_message(f"{warning}{name} @ {server}", ephemeral=True)
     else:
         await ctx.response.send_message("That user is not registered.", ephemeral=True)
+
+
+@bot.message_command(name="Register Message as BA Recruiting Post")
+async def register_ba_recruiting(
+    ctx: discord.ApplicationContext, message: discord.Message
+):
+    if message.channel.id in BA_RECRUITING_CHANNELS:
+        author = message.author  # type: discord.Member
+        if message.author.id == ctx.author.id:
+            timestamps = extract_hammertime_timestamps(message.content)
+            if len(timestamps) == 0:
+                await ctx.response.send_message(
+                    "Message must have a timestamp, such as one generated from"
+                    f" {HAMMERTIME_TIMESTAMP_URL} to be registered as a run.",
+                    ephemeral=True,
+                )
+                return
+            elif message.id in globals.ba_run_post_map:
+                await ctx.response.send_message(
+                    f"That message is already registered as a BA run!", ephemeral=True
+                )
+                return
+            else:
+                await ctx.response.defer(ephemeral=True)
+                roster_message = await message.channel.send(
+                    "Building Roster Message...", reference=message.to_reference()
+                )
+
+                run = ba_recruiting.BARun(
+                    id=message.id,
+                    roster_embed_id=roster_message.id,
+                    host=globals.verification_map[author.id]["Name"],
+                    host_id=message.author.id,
+                    icon=author.display_avatar.url,
+                    password=None,
+                    run_time=max(timestamps),
+                )
+
+                globals.ba_run_post_map[message.id] = run
+                view = ba_recruiting.BARunView(run)
+                await roster_message.edit(content="", view=view)
+                bot.bot.add_view(view=view, message_id=roster_message.id)
+                run.update_embed()
+                await ctx.send_followup("Done!")
+        else:
+            await ctx.response.send_message(
+                "Only the author of a message can designate it a recruiting post.",
+                ephemeral=True,
+            )
+    else:
+        await ctx.response.send_message(
+            "You cannot recruit for BA in this channel.", ephemeral=True
+        )
 
 
 @bot.slash_command(
@@ -627,6 +701,14 @@ with open("data/verification_map.json", "r") as loadfile:
     )  # type: Dict[str, Dict[str, Union[bool, int, str]]]
     for key in str_verification_map.keys():
         globals.verification_map[int(key)] = str_verification_map[key]
+
+with open("data/ba_run_post_map.json", "r") as loadfile:
+    str_ba_run_post_map = json.load(
+        loadfile
+    )
+    for key in str_ba_run_post_map.keys():
+        globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(*str_ba_run_post_map[key])
+
 
 if __name__ == "__main__":
     with open("secrets/token", "r") as token:

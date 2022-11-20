@@ -208,3 +208,16 @@ def schedule_task(coro):
     task.add_done_callback(globals.background_tasks.discard)
 
 
+def generate_button(
+    label: str,
+    custom_id: str,
+    style: discord.ButtonStyle,
+    callback: Callable[[discord.ui.Button, discord.Interaction], Awaitable[Any]],
+) -> discord.ui.Button:
+    button = discord.ui.Button(
+        label=label,
+        custom_id=custom_id,
+        style=style,
+    )
+    button.callback = types.MethodType(callback, button)
+    return button
