@@ -5,7 +5,6 @@ import bot
 from utils import generate_button, schedule_task, wait_and_clear
 from const import *
 import discord
-import globals
 import itertools
 from recruiting import *
 import types
@@ -332,6 +331,7 @@ class RoleSelectView(discord.ui.View):
     async def role_select_callback(
         self, select: discord.ui.Select, interaction: discord.Interaction
     ):
+        import globals
         role = select.values[0]
         resp = interaction.response  # type: discord.InteractionResponse
         if interaction.user.id in self.group.run:
