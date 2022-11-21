@@ -707,7 +707,7 @@ with open("data/ba_run_post_map.json", "r") as loadfile:
         loadfile
     )
     for key in str_ba_run_post_map.keys():
-        globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(*str_ba_run_post_map[key])
+        globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(**str_ba_run_post_map[key])
 
 
 if __name__ == "__main__":
