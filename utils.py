@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import bs4
 from const import *
@@ -9,6 +11,11 @@ import re
 import requests
 import types
 from typing import *
+
+
+if TYPE_CHECKING:
+    from bot import PhoinixBot
+
 
 with open("secrets/xivapikey") as key:
     xivapikey = key.read()
@@ -215,12 +222,12 @@ def load_verification_map():
             globals.verification_map[int(key)] = str_verification_map[key]
 
 
-def load_ba_run_map():
+def load_ba_run_map(bot: PhoinixBot):
     with open("data/ba_run_post_map.json", "r") as loadfile:
-        str_ba_run_post_map = json.load(
-            loadfile
-        )
+        str_ba_run_post_map = json.load(loadfile)
         import ba_recruiting
-        for key in str_ba_run_post_map.keys():
-            globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(**str_ba_run_post_map[key])
 
+        for key in str_ba_run_post_map.keys():
+            globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(
+                bot=bot, **str_ba_run_post_map[key]
+            )

@@ -135,9 +135,9 @@ class PhoinixBot(discord.Bot):
                     try:
                         await dm_channel.send(
                             f"Your message {message.jump_url} will be deleted in"
-                            f" {generate_hammertime_timestamp(expiration_time)} unless you"
-                            f" react with {DO_NOT_DELETE_EMOJI}\n"
-                            "Please only react if the message should not be deleted."
+                            f" {generate_hammertime_timestamp(expiration_time)} unless"
+                            f" you react with {DO_NOT_DELETE_EMOJI}\nPlease only react"
+                            " if the message should not be deleted."
                         )
                         notified = True
                     except:
@@ -295,12 +295,14 @@ class PhoinixBot(discord.Bot):
         await self.compute_guide_bindings()
         if self.first_ready:
             load_verification_map()
-            load_ba_run_map()
+            load_ba_run_map(self)
             print("Adding verification view")
             self.add_view(VerificationView(bot))
             for key in globals.ba_run_post_map.keys():
                 run = globals.ba_run_post_map[key]
-                self.add_view(ba_recruiting.BARunView(run), message_id=run.roster_embed_id)
+                self.add_view(
+                    ba_recruiting.BARunView(run), message_id=run.roster_embed_id
+                )
             schedule_task(refresh_calls_loop())
             for moderated_channel_id in MODERATED_CHANNEL_IDS:
                 channel = self.get_channel(
@@ -348,7 +350,10 @@ class PhoinixBot(discord.Bot):
         ):
             self.moderated_messages[payload.message_id].set()
 
-        if payload.channel_id in BA_RECRUITING_CHANNELS and payload.message_id in globals.ba_run_post_map:
+        if (
+            payload.channel_id in BA_RECRUITING_CHANNELS
+            and payload.message_id in globals.ba_run_post_map
+        ):
             chan = self.get_channel(payload.channel_id)  # type: discord.TextChannel
             msg = await chan.fetch_message(payload.message_id)
             run = globals.ba_run_post_map[payload.message_id]
@@ -409,7 +414,10 @@ class PhoinixBot(discord.Bot):
             self.moderated_messages[payload.message_id].set()
             self.moderated_messages.pop(payload.message_id)
 
-        if payload.channel_id in BA_RECRUITING_CHANNELS and payload.message_id in globals.ba_run_post_map:
+        if (
+            payload.channel_id in BA_RECRUITING_CHANNELS
+            and payload.message_id in globals.ba_run_post_map
+        ):
             del globals.ba_run_post_map[payload.message_id]
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -534,13 +542,15 @@ async def register_ba_recruiting(
                 )
                 return
             else:
-                await ctx.response.defer(ephemeral=True)
+                await ctx.response.send_message("Working...", ephemeral=True)
                 roster_message = await message.channel.send(
                     "Building Roster Message...", reference=message.to_reference()
                 )
 
                 run = ba_recruiting.BARun(
                     id=message.id,
+                    channel_id=message.channel.id,
+                    bot=bot,
                     roster_embed_id=roster_message.id,
                     host=globals.verification_map[author.id]["name"],
                     host_id=message.author.id,
@@ -553,8 +563,8 @@ async def register_ba_recruiting(
                 view = ba_recruiting.BARunView(run)
                 await roster_message.edit(content="", view=view)
                 bot.add_view(view=view, message_id=roster_message.id)
-                run.update_embed()
-                await ctx.send_followup("Done!")
+                await run.update_embed()
+                await ctx.send_followup("Done!", ephemeral=True)
         else:
             await ctx.response.send_message(
                 "Only the author of a message can designate it a recruiting post.",

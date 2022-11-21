@@ -11,6 +11,10 @@ import types
 from typing import *
 
 
+if TYPE_CHECKING:
+    from bot import PhoinixBot
+
+
 class BAGroup(Group):
     def __init__(
         self,
@@ -43,7 +47,7 @@ class BAGroup(Group):
     def remove_member(self, member: Union[int, RunMember]):
         for i, existing in enumerate(self.members):
             if member == existing:
-                self.roles[member.role] -= 1
+                self.roles[existing.role] -= 1
                 del self.members[i]
                 break
 
@@ -57,8 +61,9 @@ class BAGroup(Group):
         return None
 
     def __str__(self):
+        leader_index = self.leader if self.leader is not None else 0
         return "\n".join(
-            f"{BA_ROLE_EMOJI_MAPPING.get(member.role)}{f' {PARTY_LEAD_EMOJI}' if index == self.leader else ''}:"
+            f"{BA_ROLE_EMOJI_MAPPING.get(member.role)}{f' {PARTY_LEAD_EMOJI}' if index == leader_index else ''}:"
             f" **{member.name}**"
             for index, member in enumerate(self.members)
         )
@@ -77,6 +82,8 @@ class BARun:
     def __init__(
         self,
         id: Union[int, str],
+        channel_id: Union[int, str],
+        bot: PhoinixBot,
         roster_embed_id: Union[int, str],
         host: str,
         host_id: int,
@@ -88,8 +95,12 @@ class BARun:
         ] = None,
     ):
         self.id = int(id)
+        self.channel_id = int(channel_id)
+        self.bot = bot
         self.roster_embed_id = int(roster_embed_id)
-        self.groups = None if groups is None else [BAGroup(run=self, **group) for group in groups]
+        self.groups = (
+            None if groups is None else [BAGroup(run=self, **group) for group in groups]
+        )
         self.embed = BAEmbedWrapper(host, icon)
         self.host = host
         self.host_id = host_id
@@ -107,23 +118,22 @@ class BARun:
         self.password_auto_publish_running = False
         schedule_task(self.password_auto_publish_loop())
 
-        import bot
-        self.message = bot.bot.get_message(self.id)  # type: discord.Message
-        self.roster_message = bot.bot.get_message(
-            self.roster_embed_id
-        )  # type: discord.Message
-
-    def update_embed(self):
-        for index, group in self.groups:
+    async def update_embed(self):
+        for index, group in enumerate(self.groups):
+            value = f"{group}"
+            value = "Empty" if value == "" else value
             if index < 6:
                 self.embed.set_group_text(
-                    index, f"Group {index + 1} [{len(group)}/8]", f"{group}"
+                    index, f"Group {index + 1} [{len(group)}/8]", value
                 )
             else:
                 self.embed.set_group_text(
-                    index, f"Support Group [{len(group)}/5]", f"{group}"
+                    index, f"Support Group [{len(group)}/5]", value
                 )
-        self.roster_message.edit(embed=self.embed)
+        roster_message = await (
+            await self.bot.fetch_channel(self.channel_id)
+        ).fetch_message(self.roster_embed_id)
+        await roster_message.edit(embed=self.embed.embed)
 
     def valid_single(self, index: int, role: str) -> bool:
         needs = self.groups[index].needs()
@@ -206,6 +216,7 @@ class BARun:
     def to_dict(self):
         return {
             "id": self.id,
+            "channel_id": self.channel_id,
             "roster_embed_id": self.roster_embed_id,
             "groups": [group.to_dict() for group in self.groups],
             "host": self.host,
@@ -230,8 +241,9 @@ class BARun:
                 await wait_and_clear(self.signal)
                 now = datetime.datetime.now(tz=datetime.timezone.utc)
             await self.ping_run(
-                "Password is open to those signed up for this run"
-                f" {self.message.jump_url}! Click the button to receive it."
+                f"Password is open to those signed up for this run this message is"
+                f" replying to! Click the button under the recruiting post to"
+                f" receive it."
             )
         finally:
             self.password_auto_publish_running = False
@@ -250,16 +262,19 @@ class BARun:
                 return group
         return None
 
-    async def ping_run(self, message: Optional[str] = None):
-        import bot
-        message = "" if message is None else message
-        run_members = [await bot.bot.fetch_member(member.id) for member in self]
-        await self.message.channel.send(
-            message
+    async def ping_run(self, prepend: Optional[str] = None):
+        prepend = "" if prepend is None else prepend
+        run_members = [await self.bot.fetch_member(member.id) for member in self]
+        channel = await self.bot.fetch_channel(
+            self.channel_id
+        )  # type: discord.TextChannel
+        message = await channel.fetch_message(self.id)
+        await channel.send(
+            prepend
             + " ".join(
                 member.mention if member is not None else "" for member in run_members
             ),
-            reference=self.message.to_reference(),
+            reference=message.to_reference(),
         )
 
     def __contains__(self, item):
@@ -292,6 +307,7 @@ class BAEmbedWrapper:
                     " feint.\nEach group must have at least a main tank OR a blue"
                     " DPS.\nEach group must have a healer."
                 ),
+                inline=False,
             )
             embed.add_field(
                 name="Party Leads",
@@ -302,6 +318,7 @@ class BAEmbedWrapper:
                     " If you want to lead a party, claim by clicking the corresponding"
                     " button, even if it has defaulted to you!"
                 ),
+                inline=False,
             )
             for i in range(1, 7):
                 embed.add_field(
@@ -311,8 +328,9 @@ class BAEmbedWrapper:
                 )
             embed.add_field(name="Support Group", value="")
             embed.set_author(name=author_name, icon_url=icon_url)
+            embed.set_thumbnail(url=icon_url)
 
-        self.embed = embed
+        self.embed = embed  # type: discord.Embed
 
     def set_group_text(self, index: int, name: str, value: str):
         if index in range(8):
@@ -329,7 +347,7 @@ class RoleSelectView(discord.ui.View):
         min_values=1,
         max_values=1,
         options=[
-            discord.SelectOption(label=f"{BA_ROLE_EMOJI_MAPPING[role]} {role}")
+            discord.SelectOption(label=f"{role}", emoji=BA_ROLE_EMOJI_MAPPING[role])
             for role in BA_ROLE_EMOJI_MAPPING
         ],
     )
@@ -352,6 +370,7 @@ class RoleSelectView(discord.ui.View):
                 )
             )
             await resp.send_message("Successfully added!", ephemeral=True)
+            await self.group.run.update_embed()
             return
         await resp.send_message(
             "You cannot join the group as that role due to party composition"
@@ -422,7 +441,7 @@ class BARunView(discord.ui.View):
                 callback=self.get_password,
             ),
         ]
-        super().__init__(*items)
+        super().__init__(*items, timeout=None)
 
     def generate_group_select(self) -> discord.ui.Select:
         select = discord.ui.Select(
@@ -476,7 +495,9 @@ class BARunView(discord.ui.View):
     ):
         group_index = int(select.values[0])
         resp = interaction.response  # type: discord.InteractionResponse
-        await resp.send_message(view=RoleSelectView(self.run.groups[group_index]), ephemeral=True)
+        await resp.send_message(
+            view=RoleSelectView(self.run.groups[group_index]), ephemeral=True
+        )
 
     async def set_password(
         self, button: discord.ui.Button, interaction: discord.Interaction
@@ -497,6 +518,7 @@ class BARunView(discord.ui.View):
             if self.run.public:
                 await resp.send_message("Password is already public!", ephemeral=True)
             else:
+                self.run.public = True
                 await resp.send_message("Password is now public.", ephemeral=True)
         else:
             await resp.send_message(
@@ -513,6 +535,7 @@ class BARunView(discord.ui.View):
             await resp.send_message(
                 "You have been removed from the run.", ephemeral=True
             )
+            await self.run.update_embed()
             return
         await resp.send_message("You are already not in the run!", ephemeral=True)
 
@@ -527,6 +550,7 @@ class BARunView(discord.ui.View):
                 await resp.send_message(
                     "You have been assigned as group leader!", ephemeral=True
                 )
+                await self.run.update_embed()
             else:
                 await resp.send_message(
                     "Your group already has a leader!", ephemeral=True
@@ -546,8 +570,9 @@ class BARunView(discord.ui.View):
             ):
                 group.leader = None
                 await resp.send_message(
-                    "You have been assigned as group leader!", ephemeral=True
+                    "You have been removed as group leader!", ephemeral=True
                 )
+                await self.run.update_embed()
             else:
                 await resp.send_message(
                     "You are already not the group leader, or you have been assigned"
