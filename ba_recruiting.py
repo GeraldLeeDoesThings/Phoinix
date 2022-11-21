@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import bot
 import globals
 from utils import generate_button, schedule_task, wait_and_clear
 from const import *
@@ -107,6 +106,8 @@ class BARun:
             self.groups = [BAGroup(self, [], None, i) for i in range(7)]
         self.password_auto_publish_running = False
         schedule_task(self.password_auto_publish_loop())
+
+        import bot
         self.message = bot.bot.get_message(self.id)  # type: discord.Message
         self.roster_message = bot.bot.get_message(
             self.roster_embed_id
@@ -250,6 +251,7 @@ class BARun:
         return None
 
     async def ping_run(self, message: Optional[str] = None):
+        import bot
         message = "" if message is None else message
         run_members = [await bot.bot.fetch_member(member.id) for member in self]
         await self.message.channel.send(
