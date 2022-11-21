@@ -89,7 +89,7 @@ class BARun:
     ):
         self.id = int(id)
         self.roster_embed_id = int(roster_embed_id)
-        self.groups = None if groups is None else [BAGroup(**group) for group in groups]
+        self.groups = None if groups is None else [BAGroup(run=self, **group) for group in groups]
         self.embed = BAEmbedWrapper(host, icon)
         self.host = host
         self.host_id = host_id
