@@ -540,7 +540,7 @@ async def register_ba_recruiting(
                 run = ba_recruiting.BARun(
                     id=message.id,
                     roster_embed_id=roster_message.id,
-                    host=globals.verification_map[author.id]["Name"],
+                    host=globals.verification_map[author.id]["name"],
                     host_id=message.author.id,
                     icon=author.display_avatar.url,
                     password=None,
