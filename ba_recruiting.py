@@ -22,6 +22,8 @@ class BAGroup(Group):
     ):
         super().__init__(members, leader, index)
         self.roles = self.count_roles()
+        for role in BA_ROLE_EMOJI_MAPPING:
+            self.roles[role] = self.roles.get(role, 0)
         self.run = run
 
     def needs(self) -> List[str]:
@@ -472,7 +474,7 @@ class BARunView(discord.ui.View):
     ):
         group_index = int(select.values[0])
         resp = interaction.response  # type: discord.InteractionResponse
-        await resp.send_message(view=RoleSelectView(self.run.groups[group_index]))
+        await resp.send_message(view=RoleSelectView(self.run.groups[group_index]), ephemeral=True)
 
     async def set_password(
         self, button: discord.ui.Button, interaction: discord.Interaction

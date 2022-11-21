@@ -550,7 +550,7 @@ async def register_ba_recruiting(
                 globals.ba_run_post_map[message.id] = run
                 view = ba_recruiting.BARunView(run)
                 await roster_message.edit(content="", view=view)
-                bot.bot.add_view(view=view, message_id=roster_message.id)
+                bot.add_view(view=view, message_id=roster_message.id)
                 run.update_embed()
                 await ctx.send_followup("Done!")
         else:
