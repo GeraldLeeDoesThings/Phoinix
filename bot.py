@@ -309,11 +309,12 @@ class PhoinixBot(discord.Bot):
                     moderated_channel_id
                 )  # type: discord.TextChannel
                 async for moderated_message in channel.history(after=GRACE_TIME):
-                    listener_event = asyncio.Event()
-                    self.moderated_messages[moderated_message.id] = listener_event
-                    schedule_task(
-                        self.moderate_message(moderated_message, listener_event)
-                    )
+                    if moderated_message.author.id != self.user.id:
+                        listener_event = asyncio.Event()
+                        self.moderated_messages[moderated_message.id] = listener_event
+                        schedule_task(
+                            self.moderate_message(moderated_message, listener_event)
+                        )
             self.first_ready = False
 
     async def on_message(self, message: discord.Message):
@@ -333,7 +334,7 @@ class PhoinixBot(discord.Bot):
         elif id == 975557259893555271:
             print(message.content)
 
-        if id in MODERATED_CHANNEL_IDS:
+        if id in MODERATED_CHANNEL_IDS and message.author.id != self.user.id:
             listener_event = asyncio.Event()
             self.moderated_messages[message.id] = listener_event
             schedule_task(self.moderate_message(message, listener_event))
