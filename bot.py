@@ -65,6 +65,7 @@ class PhoinixBot(discord.Bot):
     def __init__(self, *, intents: discord.Intents, **options: Any):
         self.PEBE = None  # type: discord.Guild
         self.target_channel_id = None
+        self.target_dm_id = None
         # Maps Message ID -> (Emoji -> Role ID)
         self.reaction_bindings = {}  # type: Dict[int, Dict[discord.PartialEmoji, int]]
         # Maps Guide Name -> (Index -> Message Template)
@@ -487,9 +488,21 @@ class PhoinixBot(discord.Bot):
                         await member.edit(roles=[])
                     except discord.Forbidden:
                         print(f"Tried to purge {member.display_name} but couldn't")
+        elif command.startswith("target"):
+            try:
+                self.target_dm_id = int(command[7:])
+            except:
+                pass
+        elif command.startswith("dm"):
+            await self.dm_impersonate(self.target_dm_id, command[3:])
 
     async def impersonate(self, channel_id, message):
         maybe_channel = self.get_channel(channel_id)
+        if maybe_channel is not None:
+            await maybe_channel.send(message)
+
+    async def dm_impersonate(self, dm_target_id, message):
+        maybe_channel = await self.get_or_fetch_user(dm_target_id)  # type: Optional[discord.User]
         if maybe_channel is not None:
             await maybe_channel.send(message)
 
