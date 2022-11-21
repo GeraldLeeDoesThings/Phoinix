@@ -294,6 +294,8 @@ class PhoinixBot(discord.Bot):
         await self.compute_reaction_bindings()
         await self.compute_guide_bindings()
         if self.first_ready:
+            load_verification_map()
+            load_ba_run_map()
             print("Adding verification view")
             self.add_view(VerificationView(bot))
             for key in globals.ba_run_post_map.keys():
@@ -692,22 +694,6 @@ async def listguides(ctx: discord.ApplicationContext):
         await ctx.respond(
             "List of guides:\n" + "\n".join(bot.guide_bindings), ephemeral=True
         )
-
-
-update_verification_map()
-with open("data/verification_map.json", "r") as loadfile:
-    str_verification_map = json.load(
-        loadfile
-    )  # type: Dict[str, Dict[str, Union[bool, int, str]]]
-    for key in str_verification_map.keys():
-        globals.verification_map[int(key)] = str_verification_map[key]
-
-with open("data/ba_run_post_map.json", "r") as loadfile:
-    str_ba_run_post_map = json.load(
-        loadfile
-    )
-    for key in str_ba_run_post_map.keys():
-        globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(**str_ba_run_post_map[key])
 
 
 if __name__ == "__main__":

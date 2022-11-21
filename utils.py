@@ -144,23 +144,6 @@ async def refresh_calls_loop():
     schedule_task(refresh_calls_loop())
 
 
-def update_verification_map():
-    with open("data/verification_map.json", "r") as vmap:
-        ver_map = json.load(vmap)
-    print(len(ver_map.keys()))
-    for key in ver_map.keys():
-        if not type(ver_map[key]) == dict:
-            ver_map[key] = {
-                "id": ver_map[key][1],
-                "token": ver_map[key][0],
-                "name": None,
-                "server": None,
-                "valid": False,
-            }
-    with open("data/verification_map.json", "w") as vmap:
-        json.dump(ver_map, vmap, indent=4)
-
-
 def user_has_token_in_profile(
     ffxiv_id: int, token: str, resp: Optional[requests.Response] = None
 ) -> bool:
@@ -221,3 +204,23 @@ def generate_button(
     )
     button.callback = types.MethodType(callback, button)
     return button
+
+
+def load_verification_map():
+    with open("data/verification_map.json", "r") as loadfile:
+        str_verification_map = json.load(
+            loadfile
+        )  # type: Dict[str, Dict[str, Union[bool, int, str]]]
+        for key in str_verification_map.keys():
+            globals.verification_map[int(key)] = str_verification_map[key]
+
+
+def load_ba_run_map():
+    with open("data/ba_run_post_map.json", "r") as loadfile:
+        str_ba_run_post_map = json.load(
+            loadfile
+        )
+        import ba_recruiting
+        for key in str_ba_run_post_map.keys():
+            globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(**str_ba_run_post_map[key])
+
