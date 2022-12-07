@@ -77,7 +77,7 @@ def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int
     print(content)
     return [
         (discord.PartialEmoji.from_str(binding[0]), int(binding[1]))
-        for binding in re.findall("\s*(\S+?)\s+= [a-zA-z ]+ <@&(\d+)>", content)
+        for binding in re.findall("\s*(\S+?)\s+=[a-zA-z* ]*<@&(\d+)>", content)
     ]
 
 
