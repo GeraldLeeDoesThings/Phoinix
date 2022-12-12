@@ -74,6 +74,7 @@ class PhoinixBot(discord.Bot):
         # Maps Message ID -> Moderation Function Event
         self.moderated_messages = {}  # type: Dict[int, asyncio.Event]
         self.first_ready = True
+        self.debounce_deletion_notifications = True
         super().__init__(intents=intents, **options)
 
     async def moderate_message(
@@ -82,11 +83,16 @@ class PhoinixBot(discord.Bot):
         check_signal: asyncio.Event,
         default_lifetime: Optional[datetime.timedelta] = None,
         minimum_lifetime: Optional[datetime.timedelta] = None,
+        notification_time: Optional[datetime.timedelta] = None,
+        do_notifications: bool = True,
     ):
         if default_lifetime is None:
             default_lifetime = DEFAULT_MESSAGE_LIFETIME
         if minimum_lifetime is None:
             minimum_lifetime = MIN_MESSAGE_LIFETIME
+        if notification_time is None:
+            notification_time = minimum_lifetime
+
         await message.remove_reaction(DELETING_SOON_EMOJI, self.user)
         await message.add_reaction(MONITORING_EMOJI)
         notified = False
@@ -125,7 +131,7 @@ class PhoinixBot(discord.Bot):
             expiration_time = max(stamps + [message.created_at + default_lifetime])
             if now >= expiration_time:
                 await message.delete()
-            elif (expiration_time - now).days == 0:
+            elif (expiration_time - now) < notification_time:
                 # Not quite time to delete the message, but less than a day away. Mark the message.
                 await message.add_reaction(DELETING_SOON_EMOJI)
                 author = message.author  # type: discord.Member
@@ -134,12 +140,16 @@ class PhoinixBot(discord.Bot):
                     if dm_channel is None:
                         dm_channel = await author.create_dm()
                     try:
-                        await dm_channel.send(
-                            f"Your message {message.jump_url} will be deleted in"
-                            f" {generate_hammertime_timestamp(expiration_time)} unless"
-                            f" you react with {DO_NOT_DELETE_EMOJI}\nPlease only react"
-                            " if the message should not be deleted."
-                        )
+                        if (
+                            do_notifications
+                            and not self.debounce_deletion_notifications
+                        ):
+                            await dm_channel.send(
+                                f"Your message {message.jump_url} will be deleted in"
+                                f" {generate_hammertime_timestamp(expiration_time)} unless"
+                                f" you react with {DO_NOT_DELETE_EMOJI}\nPlease only"
+                                " react if the message should not be deleted."
+                            )
                         notified = True
                     except:
                         pass
@@ -287,6 +297,10 @@ class PhoinixBot(discord.Bot):
                 [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]],
             )
 
+    @delayed(delay_secs=30)
+    def unset_deletion_notification_debounce(self):
+        self.debounce_deletion_notifications = False
+
     async def on_ready(self):
         print("Nya")
         self.PEBE = self.get_guild(1028110201968132116)
@@ -314,9 +328,17 @@ class PhoinixBot(discord.Bot):
                         listener_event = asyncio.Event()
                         self.moderated_messages[moderated_message.id] = listener_event
                         schedule_task(
-                            self.moderate_message(moderated_message, listener_event)
+                            self.moderate_message(
+                                moderated_message,
+                                listener_event,
+                                default_lifetime=LIFETIME_MAP[moderated_channel_id],
+                                do_notifications=DO_NOTIFICATIONS_MAP[
+                                    moderated_channel_id
+                                ],
+                            )
                         )
             self.first_ready = False
+            schedule_task(self.unset_deletion_notification_debounce())
 
     async def on_message(self, message: discord.Message):
         id = message.channel.id
@@ -502,7 +524,9 @@ class PhoinixBot(discord.Bot):
             await maybe_channel.send(message)
 
     async def dm_impersonate(self, dm_target_id, message):
-        maybe_channel = await self.get_or_fetch_user(dm_target_id)  # type: Optional[discord.User]
+        maybe_channel = await self.get_or_fetch_user(
+            dm_target_id
+        )  # type: Optional[discord.User]
         if maybe_channel is not None:
             await maybe_channel.send(message)
 

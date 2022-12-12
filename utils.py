@@ -36,6 +36,20 @@ async def consume_limited_call():
         CALLS_REMAINING -= 1
 
 
+def delayed(delay_secs: float):
+    def delayed_deco(func):
+        async def delayed_wrapper(*args, **kwargs):
+            await asyncio.sleep(delay_secs)
+            if asyncio.iscoroutinefunction(func):
+                await func(*args, **kwargs)
+            else:
+                func(*args, **kwargs)
+
+        return delayed_wrapper
+
+    return delayed_deco
+
+
 def extract_hammertime_timestamps(content: str) -> List[datetime.datetime]:
     return [
         datetime.datetime.fromtimestamp(stamp, datetime.timezone.utc)

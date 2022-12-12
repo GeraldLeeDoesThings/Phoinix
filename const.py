@@ -57,6 +57,12 @@ HALF_DAY = datetime.timedelta(days=0.5)
 MIN_MESSAGE_LIFETIME = datetime.timedelta(days=1)
 DEFAULT_MESSAGE_LIFETIME = datetime.timedelta(days=7)
 
+
+LIFETIME_MAP = {CHANNEL_ID_MAP["drn-bozja-farming"]: datetime.timedelta(days=1)}
+
+
+DO_NOTIFICATIONS_MAP = {CHANNEL_ID_MAP["drn-bozja-farming"]: False}
+
 MAX_SEARCH_VALUES = 25
 
 OWN_ID = 1029108007264596038
