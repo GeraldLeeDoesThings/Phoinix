@@ -331,10 +331,10 @@ class PhoinixBot(discord.Bot):
                             self.moderate_message(
                                 moderated_message,
                                 listener_event,
-                                default_lifetime=LIFETIME_MAP[moderated_channel_id],
-                                do_notifications=DO_NOTIFICATIONS_MAP[
-                                    moderated_channel_id
-                                ],
+                                default_lifetime=LIFETIME_MAP.get(moderated_channel_id, DEFAULT_MESSAGE_LIFETIME),
+                                do_notifications=DO_NOTIFICATIONS_MAP.get(
+                                    moderated_channel_id, True
+                                ),
                             )
                         )
             self.first_ready = False
@@ -360,7 +360,14 @@ class PhoinixBot(discord.Bot):
         if id in MODERATED_CHANNEL_IDS and message.author.id != self.user.id:
             listener_event = asyncio.Event()
             self.moderated_messages[message.id] = listener_event
-            schedule_task(self.moderate_message(message, listener_event))
+            schedule_task(
+                self.moderate_message(
+                    message,
+                    listener_event,
+                    default_lifetime=LIFETIME_MAP.get(id, DEFAULT_MESSAGE_LIFETIME),
+                    do_notifications=DO_NOTIFICATIONS_MAP.get(id, True),
+                )
+            )
 
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         if payload.channel_id == CHANNEL_ID_MAP["roles"]:
