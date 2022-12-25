@@ -213,11 +213,13 @@ class PhoinixBot(discord.Bot):
                 bad_message = False
                 break
         if bad_message:
+            roles = "\n".join(self.PEBE.get_role(role_id).name for role_id in role_ids)
             schedule_task(
                 m.reply(
-                    "Please ensure messages in this channel mention at least one of"
-                    " DRS/BA Learners/Reclears. Your message will be deleted in 30"
-                    " seconds.",
+                    "Please ensure messages in this channel mention an appropriate"
+                    f" role. Appropriate roles are:\n{roles}\nOtherwise, please talk in"
+                    f" {self.PEBE.get_channel(CHANNEL_ID_MAP['general-offtopic']).mention} instead."
+                    " Your message will be deleted in 30 seconds.",
                     delete_after=30,
                 )
             )

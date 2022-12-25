@@ -14,6 +14,7 @@ CHANNEL_ID_MAP = {
     "guides": 1035114697957064754,
     "guides-archive": 1035462741336531014,
     "bot-testing": 1037625423850389505,
+    "general-offtopic": 1029120734586486834,
 }
 
 ROLE_ID_MAP = {
