@@ -341,7 +341,9 @@ class PhoinixBot(discord.Bot):
                             self.moderate_message(
                                 moderated_message,
                                 listener_event,
-                                default_lifetime=LIFETIME_MAP.get(moderated_channel_id, DEFAULT_MESSAGE_LIFETIME),
+                                default_lifetime=LIFETIME_MAP.get(
+                                    moderated_channel_id, DEFAULT_MESSAGE_LIFETIME
+                                ),
                                 do_notifications=DO_NOTIFICATIONS_MAP.get(
                                     moderated_channel_id, True
                                 ),
@@ -353,9 +355,7 @@ class PhoinixBot(discord.Bot):
     async def on_message(self, message: discord.Message):
         id = message.channel.id
         if id in REQUIRED_TAGS_MAP:
-            await self.validate_message_tags(
-                message, REQUIRED_TAGS_MAP[id]
-            )
+            await self.validate_message_tags(message, REQUIRED_TAGS_MAP[id])
 
         if id == CHANNEL_ID_MAP["command"]:
             await self.parse_console_command(message.content)
@@ -761,7 +761,13 @@ async def listguides(ctx: discord.ApplicationContext):
 @bot.slash_command(
     description="Registers a user for them",
 )
-async def forceregister(ctx: discord.ApplicationContext, user: discord.User, ffxiv_id: int, ffxiv_name: str, ffxiv_server: str):
+async def forceregister(
+    ctx: discord.ApplicationContext,
+    user: discord.User,
+    ffxiv_id: int,
+    ffxiv_name: str,
+    ffxiv_server: str,
+):
     author = ctx.author  # type: discord.Member
     if ROLE_ID_MAP["Admin"] in set(role.id for role in author.roles):
         await force_register_user(user.id, ffxiv_id, ffxiv_name, ffxiv_server)
