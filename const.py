@@ -25,6 +25,7 @@ ROLE_ID_MAP = {
     "DRS Learning": 1029114229845917776,
     "DRS Reclear": 1029083391208984597,
     "DRS Lead": 1029164459018698802,
+    "Delubrum Normal": 1029136889665560596,
     "Cleared DRS": 1029206045005987840,
     "Cluster Farm": 1029136967885131826,
     "Frag Farm": 1030557655867084901,
@@ -50,6 +51,7 @@ REQUIRED_TAGS_MAP = {
         ROLE_ID_MAP["Frag Farm"],
         ROLE_ID_MAP["Castrum"],
         ROLE_ID_MAP["Dalriada"],
+        ROLE_ID_MAP["Delubrum Normal"],
     },
 }
 
