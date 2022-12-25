@@ -61,6 +61,16 @@ async def register_user(did: int, name: str, server: str) -> bool:
     return True
 
 
+async def force_register_user(did: int, fid: int, name: str, server: str):
+    globals.verification_map[did] = {
+        "id": fid,
+        "name": name,
+        "server": server,
+        "valid": False,
+        "token": get_user_token(did),
+    }
+
+
 class PhoinixBot(discord.Bot):
     def __init__(self, *, intents: discord.Intents, **options: Any):
         self.PEBE = None  # type: discord.Guild
@@ -746,6 +756,18 @@ async def listguides(ctx: discord.ApplicationContext):
         await ctx.respond(
             "List of guides:\n" + "\n".join(bot.guide_bindings), ephemeral=True
         )
+
+
+@bot.slash_command(
+    description="Registers a user for them",
+)
+async def forceregister(ctx: discord.ApplicationContext, user: discord.User, ffxiv_id: int, ffxiv_name: str, ffxiv_server: str):
+    author = ctx.author  # type: discord.Member
+    if ROLE_ID_MAP["Admin"] in set(role.id for role in author.roles):
+        await force_register_user(user.id, ffxiv_id, ffxiv_name, ffxiv_server)
+        await ctx.respond("Done!", ephemeral=True)
+    else:
+        await ctx.respond("You must be an admin to use this command.", ephemeral=True)
 
 
 if __name__ == "__main__":
