@@ -25,10 +25,31 @@ ROLE_ID_MAP = {
     "DRS Reclear": 1029083391208984597,
     "DRS Lead": 1029164459018698802,
     "Cleared DRS": 1029206045005987840,
+    "Cluster Farm": 1029136967885131826,
+    "Frag Farm": 1030557655867084901,
+    "Castrum": 1029262566666551296,
+    "Dalriada": 1029262596802609272,
     "Admin": 1028878560536035428,
     "Moderator": 1029076383542018108,
     "Member": 1029923728588550214,
     "Not Verified": 1034714964553904178,
+}
+
+REQUIRED_TAGS_MAP = {
+    CHANNEL_ID_MAP["ba-recruiting"]: {
+        ROLE_ID_MAP["BA Learning"],
+        ROLE_ID_MAP["BA Reclear"],
+    },
+    CHANNEL_ID_MAP["drs-recruiting"]: {
+        ROLE_ID_MAP["DRS Learning"],
+        ROLE_ID_MAP["DRS Reclear"],
+    },
+    CHANNEL_ID_MAP["drn-bozja-farming"]: {
+        ROLE_ID_MAP["Cluster Farm"],
+        ROLE_ID_MAP["Frag Farm"],
+        ROLE_ID_MAP["Castrum"],
+        ROLE_ID_MAP["Dalriada"],
+    },
 }
 
 ACHIEVEMENT_ID_MAP = {

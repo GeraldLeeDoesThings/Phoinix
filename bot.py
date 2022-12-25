@@ -188,7 +188,7 @@ class PhoinixBot(discord.Bot):
                     reason="Recruitment post cleanup",
                 )
 
-    async def validate_message_tags(self, m: discord.Message, role_ids: List[int]):
+    async def validate_message_tags(self, m: discord.Message, role_ids: Set[int]):
         member = await self.PEBE.fetch_member(m.author.id)
         if member is None:
             print(f"FUCKED ID: {m.author.id}")
@@ -342,15 +342,12 @@ class PhoinixBot(discord.Bot):
 
     async def on_message(self, message: discord.Message):
         id = message.channel.id
-        if id == CHANNEL_ID_MAP["ba-recruiting"]:
+        if id in REQUIRED_TAGS_MAP:
             await self.validate_message_tags(
-                message, [ROLE_ID_MAP["BA Learning"], ROLE_ID_MAP["BA Reclear"]]
+                message, REQUIRED_TAGS_MAP[id]
             )
-        elif id == CHANNEL_ID_MAP["drs-recruiting"]:
-            await self.validate_message_tags(
-                message, [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]]
-            )
-        elif id == CHANNEL_ID_MAP["command"]:
+
+        if id == CHANNEL_ID_MAP["command"]:
             await self.parse_console_command(message.content)
         elif id == CHANNEL_ID_MAP["roles"]:
             await self.compute_reaction_bindings()
