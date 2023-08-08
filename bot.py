@@ -460,24 +460,15 @@ class PhoinixBot(discord.Bot):
         ):
             del globals.ba_run_post_map[payload.message_id]
 
-    async def on_member_update(self, before: discord.Member, after: discord.Member):
-        if before.display_name != after.display_name:
-            await self.fix_name(after)
-
     async def fix_name(self, member: discord.Member):
         nspair = get_user_ffxiv_name_server(member.id)
         if nspair is not None:
             name, _ = nspair
-            first, last = name.split(" ")  # type: str
+            first, _ = name.split(" ")  # type: str
             mname = member.display_name
-            mname = mname.replace(f"[{first[:3]}]", "")
-            if mname.startswith(first):
+            if mname.startswith(first) or mname.lower().startswith(first.lower()[:3]):
                 return
-            elif mname.startswith((first[:3], first.lower())):
-                splitname = mname.split(" ")
-                await member.edit(nick=f"{first} {' '.join(splitname[1:])}"[:32])
-            else:
-                await member.edit(nick=f"{first} | {mname}"[:32])
+            await member.edit(nick=nspair[:32])
 
     async def parse_console_command(self, command):
         if command.startswith("send"):

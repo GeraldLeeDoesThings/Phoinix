@@ -82,13 +82,13 @@ class VerificationView(discord.ui.View):
             await response.edit_original_response(content=result)
         else:
             try:
+                globals.verification_map[interaction.user.id] = result
                 member = await self.bot.fetch_member(interaction.user.id)
                 await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
                 if ROLE_ID_MAP["Not Verified"] in [role.id for role in member.roles]:
                     await member.remove_roles(
                         discord.Object(ROLE_ID_MAP["Not Verified"])
                     )
-                globals.verification_map[interaction.user.id] = result
                 await self.bot.fix_name(member)
                 await response.edit_original_response(content="Successfully verified!")
             except discord.HTTPException:
