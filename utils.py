@@ -68,8 +68,11 @@ async def validate_message_tags(
         print(f"FUCKED ID: {m.author.id}")
     else:
         for role in member.roles:
-            if role.id in [ROLE_ID_MAP["Admin"], ROLE_ID_MAP["Moderator"]]:
+            if role.id in [ROLE_ID_MAP["Admin"], ROLE_ID_MAP["Moderator"], ROLE_ID_MAP["Bots"]]:
                 return
+
+    if member.bot:
+        return
 
     bad_message = True
     for role_mention in m.role_mentions:
