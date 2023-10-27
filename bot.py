@@ -470,6 +470,7 @@ class PhoinixBot(discord.Bot):
             first, _ = name.split(" ")  # type: str
             mname = member.display_name
             if mname.startswith(first) or mname.lower().startswith(first.lower()[:3]):
+                print(f"Skipping name fix for {mname} with first {first}")
                 return
             await member.edit(nick=nspair[:32])
 
