@@ -98,19 +98,23 @@ def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int
     ]
 
 
-async def lodestone_search(
-    name: str, server: str
+def lodestone_search(
+    name: str,
+    server: str,
 ) -> Optional[Dict[str, Union[str, int]]]:
-    await consume_limited_call()
-    results = API_SESSION.get(
-        f"{XIVAPI_BASE_URL}character/search", params={"name": name, "server": server}
-    ).json()["Results"]
-    for result in results:
-        if result["Name"] == name and result["Server"] == server:
+    request = requests.get(LODESTONE_BASE_URL, params={"all_search": "", "search_type": "character", "q": name})
+    result = bs4.BeautifulSoup(
+        request.content.decode(),
+        "html.parser",
+    )
+    for player in result.find_all("a", "entry__link"):
+        found_name, found_server, _, _ = list(player.stripped_strings)  # type: str
+        found_id = player["href"].split('/')[-2]
+        if found_name == name and found_server.startswith(server):
             return {
-                "id": result["ID"],
-                "name": name,
-                "server": server,
+                "id": int(found_id),
+                "name": found_name,
+                "server": found_server,
             }
     return None
 
