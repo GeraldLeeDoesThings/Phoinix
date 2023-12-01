@@ -52,7 +52,7 @@ def get_user_ffxiv_name_server(id: int) -> Optional[Tuple[str, str]]:
 
 
 async def register_user(did: int, name: str, server: str) -> bool:
-    search = await lodestone_search(name, server)
+    search = lodestone_search(name, server)
     if search is None:
         return False
     search["valid"] = False
