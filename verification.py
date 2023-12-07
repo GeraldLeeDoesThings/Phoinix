@@ -1,8 +1,8 @@
 import globals
-
 import bot
 from const import *
 import discord
+from utils import validate_server
 
 
 class VerificationModal(discord.ui.Modal):
@@ -18,6 +18,15 @@ class VerificationModal(discord.ui.Modal):
         fakedefer = await interaction.response.send_message(
             "Searching...", ephemeral=True
         )  # type: discord.Interaction
+
+        validServer, suggestedServer = validate_server(server)
+
+        if not validServer:
+            await fakedefer.edit_original_response(
+                content=suggestedServer,
+            )
+            return
+
         if await bot.register_user(
             interaction.user.id,
             name,
@@ -37,9 +46,8 @@ class VerificationModal(discord.ui.Modal):
         await fakedefer.edit_original_response(
             content=(
                 f"Could not find character with:\nName: {name}\nServer:"
-                f" {server}\n\nEnsure that the name and server are correct. Name should"
-                " be first and last (ex Lerald Gee), and server should only include"
-                " the server (ex Famfrit)."
+                f" {server}\n\nName should be exact, and include both"
+                " first and last (ex 'Lerald Gee' without quotes)."
             ),
         )
 

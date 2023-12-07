@@ -7,6 +7,7 @@ import datetime
 import discord
 import globals
 import json
+import nltk
 import re
 import requests
 import types
@@ -102,20 +103,33 @@ def lodestone_search(
     name: str,
     server: str,
 ) -> Optional[Dict[str, Union[str, int]]]:
-    request = requests.get(LODESTONE_BASE_URL, params={"all_search": "", "search_type": "character", "q": name})
-    result = bs4.BeautifulSoup(
-        request.content.decode(),
-        "html.parser",
-    )
-    for player in result.find_all("a", "entry__link"):
-        found_name, found_server, _, _ = list(player.stripped_strings)  # type: str
-        found_id = player["href"].split('/')[-2]
-        if found_name == name and found_server.startswith(server):
-            return {
-                "id": int(found_id),
-                "name": found_name,
-                "server": found_server,
-            }
+    page = 1
+    numPages = 1
+
+    while page <= min(numPages, 5):
+        request = requests.get(LODESTONE_BASE_URL, params={"q": name, "page": page, "worldname": server})
+        result = bs4.BeautifulSoup(
+            request.content.decode(),
+            "html.parser",
+        )
+        numPagesHTML = result.find("li", "btn__pager__current")
+
+        if numPagesHTML is not None:
+            numPagesMatch = re.match(r"Page \d+ of (\d+)", numPagesHTML.text)
+            if numPagesMatch is not None:
+                numPages = int(numPagesMatch[1])
+
+        for player in result.find_all("a", "entry__link"):
+            found_name, found_server, _, _ = list(player.stripped_strings)  # type: str
+            found_id = player["href"].split('/')[-2]
+            if found_name == name and found_server.startswith(server):
+                return {
+                    "id": int(found_id),
+                    "name": found_name,
+                    "server": found_server,
+                }
+        page += 1
+
     return None
 
 
@@ -252,3 +266,13 @@ def load_ba_run_map(bot: PhoinixBot):
             globals.ba_run_post_map[int(key)] = ba_recruiting.BARun(
                 bot=bot, **str_ba_run_post_map[key]
             )
+
+
+def validate_server(server: str) -> (bool, str):
+    if server.capitalize() in FFXIV_SERVERS:
+        return True, ""
+    suggestion, _ = min(
+        ((tserver, nltk.edit_distance(server.capitalize(), tserver)) for tserver in FFXIV_SERVERS),
+        key=lambda p: p[1],
+    )
+    return False, f"'{server}' is not a server. Did you mean '{suggestion}'?"
