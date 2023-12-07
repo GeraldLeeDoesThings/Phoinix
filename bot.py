@@ -284,6 +284,9 @@ class PhoinixBot(discord.Bot):
                         break
             else:
                 await message.add_reaction("❎")
+        for guide in bindings.values():
+            for img in guide.values():
+                print(f"Guide URL {img.attachments[0].url}")
         async with self.guide_lock:
             self.guide_bindings = bindings
 
