@@ -34,9 +34,9 @@ class VerificationModal(discord.ui.Modal):
         ):
             await fakedefer.edit_original_response(
                 content=(
-                    f"Character found! Add `{bot.get_user_token(interaction.user.id)}`"
-                    " to your character profile on the Lodestone, then click the"
-                    " Verify button. If you cannot copy your token, try copying from"
+                    f"Registration successful! Add `{bot.get_user_token(interaction.user.id)}`"
+                    " to your character profile on the Lodestone, then **click the"
+                    " Verify button.** If you cannot copy your token, try copying from"
                     f" {ECHO_TOKEN_URL}{bot.get_user_token(interaction.user.id)}\nYour"
                     " character profile can be found here:"
                     " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
