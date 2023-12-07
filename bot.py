@@ -15,6 +15,7 @@ import threading
 from typing import *
 from utils import *
 import uuid
+from urllib.parse import urlparse, urlunparse
 from verification import *
 
 
@@ -733,6 +734,9 @@ async def guide(ctx: discord.ApplicationContext, name: str):
             ]
 
             def build_embed(url: str) -> discord.Embed:
+                url = urlunparse(
+                    urlparse(url)._replace(query=None)
+                )
                 print(f"Building embed with url: {url}")
                 embed = discord.Embed(url=url)
                 embed.set_image(url=url)
