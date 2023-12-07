@@ -730,6 +730,7 @@ async def guide(ctx: discord.ApplicationContext, name: str):
             ]
 
             def build_embed(url: str) -> discord.Embed:
+                print(f"Building embed with url: {url}")
                 embed = discord.Embed(url=url)
                 embed.set_image(url=url)
                 return embed
