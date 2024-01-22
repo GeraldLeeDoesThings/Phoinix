@@ -116,10 +116,11 @@ class VerificationView(discord.ui.View):
     async def verify_ba_clear(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
-        await self.verify_achievement(
+        await self.verify_clear(
             button,
             interaction,
             ACHIEVEMENT_ID_MAP["BA Clear"],
+            MOUNT_ID_MAP["BA Ball"],
             ROLE_ID_MAP["Cleared BA"],
         )
 
@@ -131,18 +132,20 @@ class VerificationView(discord.ui.View):
     async def verify_drs_clear(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ):
-        await self.verify_achievement(
+        await self.verify_clear(
             button,
             interaction,
             ACHIEVEMENT_ID_MAP["DRS Clear"],
+            MOUNT_ID_MAP["DRS Dog"],
             ROLE_ID_MAP["Cleared DRS"],
         )
 
-    async def verify_achievement(
+    async def verify_clear(
         self,
         button: discord.ui.Button,
         interaction: discord.Interaction,
-        id: int,
+        achievement_id: int,
+        mount_id: str,
         role: int,
     ):
         if not bot.known_discord_id(interaction.user.id):
@@ -162,14 +165,14 @@ class VerificationView(discord.ui.View):
             response = await interaction.response.send_message(
                 "Checking achievements...", ephemeral=True
             )  # type: discord.Interaction
-            has = bot.user_has_achievement(
-                bot.get_user_ffxiv_id(interaction.user.id), id
-            )
+            ffxiv_id = bot.get_user_ffxiv_id(interaction.user.id)
+            has = bot.validate_mount(ffxiv_id, mount_id) \
+                  or bot.user_has_achievement(ffxiv_id, achievement_id)
             if has is None:
                 await response.edit_original_response(
                     content=(
-                        "Your achievements are not public! Set them to public, then try"
-                        " again."
+                        "Your achievements are not public, and no mount indicating a clear was found in your mounts!"
+                        " Set your achievements to public, then try again."
                     )
                 )
             elif has:

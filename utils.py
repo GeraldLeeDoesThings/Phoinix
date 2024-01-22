@@ -276,3 +276,15 @@ def validate_server(server: str) -> (bool, str):
         key=lambda p: p[1],
     )
     return False, f"'{server}' is not a server. Did you mean '{suggestion}'?"
+
+
+def validate_mount(ffxiv_id: int, mount_id: str) -> bool:
+
+    req = requests.get(f"{LODESTONE_BASE_URL}{ffxiv_id}/mount/")
+    parsed = bs4.BeautifulSoup(req.text, "html.parser")
+    return parsed.find(
+        "li", attrs={
+            "class": "mount__list_icon",
+            "data-tooltip_href": f"/lodestone/character/{ffxiv_id}/mount/tooltip/{mount_id}"
+        }
+    ) is not None

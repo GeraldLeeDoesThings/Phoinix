@@ -66,6 +66,11 @@ EMOJI_ID_MAP = {
     "x": 1035394485435236422,
 }
 
+MOUNT_ID_MAP = {
+    "DRS Dog": "2d6f62ca18aaaee158814589037dc12f5d708d89",
+    "BA Ball": "e824d1537420ae8c6c872ec9f91c5657423b5fa6",
+}
+
 ECHO_TOKEN_URL = "https://www.geraldmadethiscool.website/echo/"
 
 LODESTONE_BASE_URL = "https://na.finalfantasyxiv.com/lodestone/character/"
