@@ -7,7 +7,9 @@ CHANNEL_ID_MAP = {
     "ba-gauging-interest": 1029102353535729815,
     "drn-bozja-farming": 1029104917039820870,
     "drs-recruiting": 1029102476156215307,
+    "drs-oce-recruiting": 1222595308056219782,
     "drs-gauging-interest": 1029102431587545261,
+    "drs-schedule": 1169284791775006833,
     "command": 275741052344860672,
     "roles": 1029906434877558886,
     "rules": 1029060303746506772,
@@ -47,6 +49,10 @@ REQUIRED_TAGS_MAP = {
         ROLE_ID_MAP["DRS Learning"],
         ROLE_ID_MAP["DRS Reclear"],
     },
+    CHANNEL_ID_MAP["drs-oce-recruiting"]: {
+        ROLE_ID_MAP["DRS Learning"],
+        ROLE_ID_MAP["DRS Reclear"],
+    },
     CHANNEL_ID_MAP["drn-bozja-farming"]: {
         ROLE_ID_MAP["Cluster Farm"],
         ROLE_ID_MAP["Frag Farm"],
@@ -81,7 +87,7 @@ XIVAPI_BASE_URL = "https://xivapi.com/"
 
 HAMMERTIME_TIMESTAMP_URL = "https://hammertime.cyou/"
 
-GRACE_TIME = datetime.datetime.fromisoformat("2022-11-03T08:51:35.333725+00:00")
+GRACE_TIME = datetime.datetime.fromisoformat("2024-04-10T21:44:04.762448+00:00")
 HALF_DAY = datetime.timedelta(days=0.5)
 
 MIN_MESSAGE_LIFETIME = datetime.timedelta(days=1)
@@ -108,6 +114,7 @@ MODERATED_CHANNEL_IDS = [
     CHANNEL_ID_MAP["drn-bozja-farming"],
     CHANNEL_ID_MAP["drs-gauging-interest"],
     CHANNEL_ID_MAP["drs-recruiting"],
+    CHANNEL_ID_MAP["drs-oce-recruiting"],
 ]
 
 BA_RECRUITING_CHANNELS = [

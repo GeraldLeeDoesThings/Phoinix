@@ -62,6 +62,10 @@ def generate_hammertime_timestamp(dtime: datetime.datetime) -> str:
     return f"<t:{int(dtime.timestamp())}:R>"
 
 
+def generate_hammertime_timestamp_detailed(dtime: datetime.datetime) -> str:
+    return f"<t:{int(dtime.timestamp())}:F> ({generate_hammertime_timestamp(dtime)})"
+
+
 async def validate_message_tags(
     m: discord.Message, member: Optional[discord.Member], role_ids: List[int]
 ):

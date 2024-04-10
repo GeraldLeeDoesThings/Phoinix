@@ -72,6 +72,17 @@ async def force_register_user(did: int, fid: int, name: str, server: str):
     }
 
 
+@delayed(delay_secs=3600)
+async def backup_dbs():
+    with open("data/verification_map.json", "w") as dumpfile:
+        json.dump(globals.verification_map, dumpfile, indent=4)
+    with open("data/ba_run_post_map.json", "w") as dumpfile:
+        to_save = {}
+        for key in globals.ba_run_post_map.keys():
+            to_save[str(key)] = globals.ba_run_post_map[key].to_dict()
+        json.dump(to_save, dumpfile, indent=4)
+
+
 class PhoinixBot(discord.Bot):
     def __init__(self, *, intents: discord.Intents, **options: Any):
         self.PEBE = None  # type: discord.Guild
@@ -294,9 +305,11 @@ class PhoinixBot(discord.Bot):
     async def delete_untagged_messages(self):
         ba = self.get_channel(CHANNEL_ID_MAP["ba-recruiting"])
         drs = self.get_channel(CHANNEL_ID_MAP["drs-recruiting"])
+        drs_oce = self.get_channel(CHANNEL_ID_MAP["drs-oce-recruiting"])
 
         ba_messages = ba.history(limit=100, after=GRACE_TIME)
         drs_messages = drs.history(limit=100, after=GRACE_TIME)
+        drs_oce_messages = drs_oce.history(limit=100, after=GRACE_TIME)
 
         async for message in ba_messages:
             # This is dumb and only here for autocomplete
@@ -309,6 +322,15 @@ class PhoinixBot(discord.Bot):
 
         async for message in drs_messages:
             # Same thing here
+            m = message  # type: discord.Message
+            await validate_message_tags(
+                m,
+                await self.fetch_member(m.author.id),
+                [ROLE_ID_MAP["DRS Learning"], ROLE_ID_MAP["DRS Reclear"]],
+            )
+
+        async for message in drs_oce_messages:
+            # You know the drill
             m = message  # type: discord.Message
             await validate_message_tags(
                 m,
@@ -360,6 +382,7 @@ class PhoinixBot(discord.Bot):
                         )
             self.first_ready = False
             schedule_task(self.unset_deletion_notification_debounce())
+            schedule_task(backup_dbs())
 
     async def on_message(self, message: discord.Message):
         id = message.channel.id
