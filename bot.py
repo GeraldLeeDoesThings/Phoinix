@@ -74,13 +74,17 @@ async def force_register_user(did: int, fid: int, name: str, server: str):
 
 @delayed(delay_secs=3600)
 async def backup_dbs():
-    with open("data/verification_map.json", "w") as dumpfile:
-        json.dump(globals.verification_map, dumpfile, indent=4)
-    with open("data/ba_run_post_map.json", "w") as dumpfile:
-        to_save = {}
-        for key in globals.ba_run_post_map.keys():
-            to_save[str(key)] = globals.ba_run_post_map[key].to_dict()
-        json.dump(to_save, dumpfile, indent=4)
+    while True:
+        with open("data/verification_map.json", "w") as dumpfile:
+            json.dump(globals.verification_map, dumpfile, indent=4)
+        with open("data/ba_run_post_map.json", "w") as dumpfile:
+            to_save = {}
+            for key in globals.ba_run_post_map.keys():
+                to_save[str(key)] = globals.ba_run_post_map[key].to_dict()
+            json.dump(to_save, dumpfile, indent=4)
+
+        await asyncio.sleep(3600)
+
 
 
 class PhoinixBot(discord.Bot):
