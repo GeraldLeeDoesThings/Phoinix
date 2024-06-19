@@ -255,4 +255,12 @@ FFXIV_SERVERS = [
     "Phantom",
     "Raiden",
     "Sagittarius",
+    "Cuchulainn",
+    "Golem",
+    "Kraken",
+    "Rafflesia",
+    "Innocence",
+    "Pixie",
+    "Titania",
+    "Tycoon",
 ]
