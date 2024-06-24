@@ -13,7 +13,7 @@ class VerificationModal(discord.ui.Modal):
         self.add_item(discord.ui.InputText(label="Character Server"))
 
     async def callback(self, interaction: discord.Interaction):
-        name = " ".join(part.capitalize() for part in self.children[0].value.split(" "))
+        name = " ".join(part.capitalize() for part in self.children[0].value.split(" ")).replace("’", "'")
         server = self.children[1].value.split(" ")[0].capitalize()
         fakedefer = await interaction.response.send_message(
             "Searching...", ephemeral=True
