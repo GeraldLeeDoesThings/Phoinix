@@ -86,7 +86,6 @@ async def backup_dbs():
         await asyncio.sleep(3600)
 
 
-
 class PhoinixBot(discord.Bot):
     def __init__(self, *, intents: discord.Intents, **options: Any):
         self.PEBE = None  # type: discord.Guild
@@ -220,7 +219,11 @@ class PhoinixBot(discord.Bot):
             print(f"FUCKED ID: {m.author.id}")
         else:
             for role in member.roles:
-                if role.id in [ROLE_ID_MAP["Admin"], ROLE_ID_MAP["Moderator"], ROLE_ID_MAP["Bots"]]:
+                if role.id in [
+                    ROLE_ID_MAP["Admin"],
+                    ROLE_ID_MAP["Moderator"],
+                    ROLE_ID_MAP["Bots"],
+                ]:
                     return
 
         if member.bot:
@@ -369,7 +372,9 @@ class PhoinixBot(discord.Bot):
                     moderated_channel_id
                 )  # type: discord.TextChannel
                 if channel is None:
-                    print(f"Failed to fetch history for channel with id: {moderated_channel_id}")
+                    print(
+                        f"Failed to fetch history for channel with id: {moderated_channel_id}"
+                    )
                     continue
                 async for moderated_message in channel.history(after=GRACE_TIME):
                     if moderated_message.author.id != self.user.id:
@@ -770,9 +775,7 @@ async def guide(ctx: discord.ApplicationContext, name: str):
             ]
 
             def build_embed(url: str) -> discord.Embed:
-                url = urlunparse(
-                    urlparse(url)._replace(query=None)
-                )
+                url = urlunparse(urlparse(url)._replace(query=None))
                 print(f"Building embed with url: {url}")
                 embed = discord.Embed(url=url)
                 embed.set_image(url=url)
@@ -825,9 +828,13 @@ async def botinfo(
 ):
     author = ctx.author  # type: discord.Member
     if ROLE_ID_MAP["Admin"] in set(role.id for role in author.roles):
-        await ctx.respond(f"There are {len(asyncio.all_tasks())} running.\nThere are {len(globals.verification_map)} users registered.\n", ephemeral=True)
+        await ctx.respond(
+            f"There are {len(asyncio.all_tasks())} running.\nThere are {len(globals.verification_map)} users registered.\n",
+            ephemeral=True,
+        )
     else:
         await ctx.respond("You must be an admin to use this command.", ephemeral=True)
+
 
 if __name__ == "__main__":
     with open("secrets/token", "r") as token:

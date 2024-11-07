@@ -73,7 +73,11 @@ async def validate_message_tags(
         print(f"FUCKED ID: {m.author.id}")
     else:
         for role in member.roles:
-            if role.id in [ROLE_ID_MAP["Admin"], ROLE_ID_MAP["Moderator"], ROLE_ID_MAP["Bots"]]:
+            if role.id in [
+                ROLE_ID_MAP["Admin"],
+                ROLE_ID_MAP["Moderator"],
+                ROLE_ID_MAP["Bots"],
+            ]:
                 return
 
     if member.bot:
@@ -110,7 +114,9 @@ def lodestone_search(
     numPages = 1
 
     while page <= min(numPages, 5):
-        request = requests.get(LODESTONE_BASE_URL, params={"q": name, "page": page, "worldname": server})
+        request = requests.get(
+            LODESTONE_BASE_URL, params={"q": name, "page": page, "worldname": server}
+        )
         result = bs4.BeautifulSoup(
             request.content.decode(),
             "html.parser",
@@ -124,7 +130,7 @@ def lodestone_search(
 
         for player in result.find_all("a", "entry__link"):
             found_name, found_server, _, _ = list(player.stripped_strings)  # type: str
-            found_id = player["href"].split('/')[-2]
+            found_id = player["href"].split("/")[-2]
             if found_name == name and found_server.startswith(server):
                 return {
                     "id": int(found_id),
@@ -276,7 +282,10 @@ def validate_server(server: str) -> (bool, str):
     if server.capitalize() in FFXIV_SERVERS:
         return True, ""
     suggestion, _ = min(
-        ((tserver, nltk.edit_distance(server.capitalize(), tserver)) for tserver in FFXIV_SERVERS),
+        (
+            (tserver, nltk.edit_distance(server.capitalize(), tserver))
+            for tserver in FFXIV_SERVERS
+        ),
         key=lambda p: p[1],
     )
     return False, f"'{server}' is not a server. Did you mean '{suggestion}'?"
@@ -286,9 +295,13 @@ def validate_mount(ffxiv_id: int, mount_id: str) -> bool:
 
     req = requests.get(f"{LODESTONE_BASE_URL}{ffxiv_id}/mount/")
     parsed = bs4.BeautifulSoup(req.text, "html.parser")
-    return parsed.find(
-        "li", attrs={
-            "class": "mount__list_icon",
-            "data-tooltip_href": f"/lodestone/character/{ffxiv_id}/mount/tooltip/{mount_id}"
-        }
-    ) is not None
+    return (
+        parsed.find(
+            "li",
+            attrs={
+                "class": "mount__list_icon",
+                "data-tooltip_href": f"/lodestone/character/{ffxiv_id}/mount/tooltip/{mount_id}",
+            },
+        )
+        is not None
+    )

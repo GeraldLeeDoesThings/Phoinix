@@ -13,7 +13,9 @@ class VerificationModal(discord.ui.Modal):
         self.add_item(discord.ui.InputText(label="Character Server"))
 
     async def callback(self, interaction: discord.Interaction):
-        name = " ".join(part.capitalize() for part in self.children[0].value.split(" ")).replace("’", "'")
+        name = " ".join(
+            part.capitalize() for part in self.children[0].value.split(" ")
+        ).replace("’", "'")
         server = self.children[1].value.split(" ")[0].capitalize()
         fakedefer = await interaction.response.send_message(
             "Searching...", ephemeral=True
@@ -166,8 +168,9 @@ class VerificationView(discord.ui.View):
                 "Checking achievements...", ephemeral=True
             )  # type: discord.Interaction
             ffxiv_id = bot.get_user_ffxiv_id(interaction.user.id)
-            has = bot.validate_mount(ffxiv_id, mount_id) \
-                  or bot.user_has_achievement(ffxiv_id, achievement_id)
+            has = bot.validate_mount(ffxiv_id, mount_id) or bot.user_has_achievement(
+                ffxiv_id, achievement_id
+            )
             if has is None:
                 await response.edit_original_response(
                     content=(
