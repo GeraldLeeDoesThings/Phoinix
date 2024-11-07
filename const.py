@@ -17,6 +17,7 @@ CHANNEL_ID_MAP = {
     "guides-archive": 1035462741336531014,
     "bot-testing": 1037625423850389505,
     "general-offtopic": 1029120734586486834,
+    "na-drs-schedule": 1279872027544653857,
 }
 
 ROLE_ID_MAP = {

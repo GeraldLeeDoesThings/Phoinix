@@ -402,6 +402,12 @@ class PhoinixBot(discord.Bot):
             await self.compute_reaction_bindings()
         elif id == 975557259893555271:
             print(message.content)
+        elif id == CHANNEL_ID_MAP["na-drs-schedule"]:
+            print("Received schedule: ", message.content)
+            for embed in message.embeds:
+                if "lego steppers" in embed.title.lower():
+                    print("Deleting schedule...")
+                    schedule_task(message.delete(reason="Not a foray server"))
 
         if id in MODERATED_CHANNEL_IDS and message.author.id != self.user.id:
             listener_event = asyncio.Event()
