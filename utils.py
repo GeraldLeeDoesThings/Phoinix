@@ -96,7 +96,6 @@ async def validate_message_tags(
 
 
 def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int]]:
-    print(content)
     return [
         (discord.PartialEmoji.from_str(binding[0]), int(binding[1]))
         for binding in re.findall("\s*(\S+?)\s+=[a-zA-z* ]*<@&(\d+)>", content)
@@ -174,7 +173,7 @@ def full_validate(
     if not user_has_token_in_profile(cid, token, resp):
         return (
             f"Token, `{token}` (can be copied from {ECHO_TOKEN_URL}{token}), not found"
-            f" in character profile at {LODESTONE_BASE_URL}{cid}"
+            f" in character profile at {LODESTONE_BASE_URL}{cid}\n Additionally, **ensure your lodestone is not set to private.**"
         )
     registered_data["server"] = fserver  # Adds [Datacenter]
     registered_data["valid"] = True
