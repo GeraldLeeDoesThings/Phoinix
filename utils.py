@@ -259,6 +259,7 @@ def load_verification_map():
         )  # type: Dict[str, Dict[str, Union[bool, int, str]]]
         for key in str_verification_map.keys():
             globals.verification_map[int(key)] = str_verification_map[key]
+        print(f"Loaded {len(globals.verification_map)} users.")
 
 
 def load_ba_run_map(bot: PhoinixBot):

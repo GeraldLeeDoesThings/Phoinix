@@ -808,6 +808,18 @@ async def forceregister(
         await ctx.respond("You must be an admin to use this command.", ephemeral=True)
 
 
+@bot.slash_command(
+    description="Lists some info about the internal state of the bot",
+)
+async def botinfo(
+        ctx: discord.ApplicationContext,
+):
+    author = ctx.author  # type: discord.Member
+    if ROLE_ID_MAP["Admin"] in set(role.id for role in author.roles):
+        await ctx.respond(f"There are {len(asyncio.all_tasks())} running.\nThere are {len(globals.verification_map)} users registered.\n", ephemeral=True)
+    else:
+        await ctx.respond("You must be an admin to use this command.", ephemeral=True)
+
 if __name__ == "__main__":
     with open("secrets/token", "r") as token:
         bot.run(token.read())
