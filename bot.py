@@ -368,6 +368,9 @@ class PhoinixBot(discord.Bot):
                 channel = self.get_channel(
                     moderated_channel_id
                 )  # type: discord.TextChannel
+                if channel is None:
+                    print(f"Failed to fetch history for channel with id: {moderated_channel_id}")
+                    continue
                 async for moderated_message in channel.history(after=GRACE_TIME):
                     if moderated_message.author.id != self.user.id:
                         listener_event = asyncio.Event()
@@ -812,7 +815,7 @@ async def forceregister(
     description="Lists some info about the internal state of the bot",
 )
 async def botinfo(
-        ctx: discord.ApplicationContext,
+    ctx: discord.ApplicationContext,
 ):
     author = ctx.author  # type: discord.Member
     if ROLE_ID_MAP["Admin"] in set(role.id for role in author.roles):
