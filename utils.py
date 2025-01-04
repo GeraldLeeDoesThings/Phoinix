@@ -115,7 +115,7 @@ def lodestone_search(
 
     while page <= min(numPages, 5):
         request = requests.get(
-            LODESTONE_BASE_URL, params={"q": name, "page": page, "worldname": server}
+            LODESTONE_BASE_URL, params={"q": "\"" + name + "\"", "page": page, "worldname": server}
         )
         result = bs4.BeautifulSoup(
             request.content.decode(),
