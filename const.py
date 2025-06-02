@@ -34,6 +34,7 @@ ROLE_ID_MAP = {
     "Frag Farm": 1030557655867084901,
     "Castrum": 1029262566666551296,
     "Dalriada": 1029262596802609272,
+    "Cleared FT": 1294582065307582564,
     "Admin": 1028878560536035428,
     "Moderator": 1029076383542018108,
     "Member": 1029923728588550214,
@@ -66,6 +67,7 @@ REQUIRED_TAGS_MAP = {
 ACHIEVEMENT_ID_MAP = {
     "DRS Clear": 2765,
     "BA Clear": 2227,
+    "FT Clear": 3668,
 }
 
 EMOJI_ID_MAP = {
@@ -76,6 +78,7 @@ EMOJI_ID_MAP = {
 MOUNT_ID_MAP = {
     "DRS Dog": "2d6f62ca18aaaee158814589037dc12f5d708d89",
     "BA Ball": "e824d1537420ae8c6c872ec9f91c5657423b5fa6",
+    "FT Crab": "d1aa1d7e1960efb7ca6e253481ac872bb97d5dad",
 }
 
 ECHO_TOKEN_URL = "https://www.geraldmadethiscool.website/echo/"

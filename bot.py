@@ -601,7 +601,7 @@ async def summonverify(ctx: discord.ApplicationContext):
         await ctx.send_response("Only Lerald can run this.", ephemeral=True)
 
 
-@bot.user_command(name="Get Name/Server")
+@bot.user_command(name="Get Name/Server", default_member_permissions=discord.Permissions(kick_members=True))
 async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Member):
     if known_discord_id(member.id):
         warning = (

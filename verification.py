@@ -142,6 +142,22 @@ class VerificationView(discord.ui.View):
             ROLE_ID_MAP["Cleared DRS"],
         )
 
+    @discord.ui.button(
+        label="Verify FT Clear",
+        custom_id="verify_ft",
+        style=discord.ButtonStyle.primary,
+    )
+    async def verify_ft_clear(
+            self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        await self.verify_clear(
+            button,
+            interaction,
+            ACHIEVEMENT_ID_MAP["FT Clear"],
+            MOUNT_ID_MAP["FT Crab"],
+            ROLE_ID_MAP["Cleared FT"],
+        )
+
     async def verify_clear(
         self,
         button: discord.ui.Button,
