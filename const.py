@@ -18,6 +18,7 @@ CHANNEL_ID_MAP = {
     "bot-testing": 1037625423850389505,
     "general-offtopic": 1029120734586486834,
     "na-drs-schedule": 1279872027544653857,
+    "ft-recruiting": 1350184451979743362,
 }
 
 ROLE_ID_MAP = {
@@ -34,6 +35,12 @@ ROLE_ID_MAP = {
     "Frag Farm": 1030557655867084901,
     "Castrum": 1029262566666551296,
     "Dalriada": 1029262596802609272,
+    "FT Learning": 1350201714094899282,
+    "FT Reclear": 1350200965839585343,
+    "Volunteer FT Shotcaller": 1379526858403479682,
+    "FT Gold Farm": 1377155818356477992,
+    "Sporks": 1374201233954574417,
+    "Crescent Levelling": 1350201911550148678,
     "Cleared FT": 1294582065307582564,
     "Admin": 1028878560536035428,
     "Moderator": 1029076383542018108,
@@ -61,6 +68,10 @@ REQUIRED_TAGS_MAP = {
         ROLE_ID_MAP["Castrum"],
         ROLE_ID_MAP["Dalriada"],
         ROLE_ID_MAP["Delubrum Normal"],
+    },
+    CHANNEL_ID_MAP["ft-recruiting"]: {
+        ROLE_ID_MAP["FT Learning"],
+        ROLE_ID_MAP["FT Reclear"],
     },
 }
 
