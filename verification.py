@@ -158,6 +158,55 @@ class VerificationView(discord.ui.View):
             ROLE_ID_MAP["Cleared FT"],
         )
 
+    @discord.ui.string_select(
+        placeholder="Add/Remove Enjoyer Roles",
+        options=[
+            discord.SelectOption(label="FT Enjoyer"),
+            discord.SelectOption(label="DRS Enjoyer"),
+            discord.SelectOption(label="BA Enjoyer"),
+            discord.SelectOption(label="Remove Enjoyer Roles", description="Removes all enjoyer roles"),
+        ]
+    )
+    async def modify_enjoyer_roles(
+        self,
+        select: discord.ui.Select,
+        interaction: discord.Interaction,
+    ):
+        member = interaction.user
+        role_ids = [*map(lambda role: role.id, member.roles)]
+        selection_mappings = {
+            "FT Enjoyer": {"needed role": "Cleared FT", "given role": "FT Enjoyer", "missing msg": "FT Clear"},
+            "DRS Enjoyer": {"needed role": "Cleared DRS", "given role": "DRS Enjoyer", "missing msg": "DRS Clear"},
+            "BA Enjoyer": {"needed role": "Cleared BA", "given role": "BA Enjoyer", "missing msg": "BA Clear"},
+        }
+        for selection in select.values:
+            mapping = selection_mappings.get(selection, None)
+            if mapping is not None:
+                needed_role = ROLE_ID_MAP[mapping["needed role"]]
+                given_role = ROLE_ID_MAP[mapping["given role"]]
+
+                if needed_role in role_ids:
+                    await member.add_roles(discord.Object(given_role))
+                    await interaction.response.send_message(
+                        "Role added!",
+                        ephemeral=True,
+                    )
+                else:
+                    await interaction.response.send_message(
+                        f"You must verify a {mapping['missing msg']} before you can claim this role!",
+                        ephemeral=True,
+                    )
+            elif selection == "Remove Enjoyer Roles":
+                await member.remove_roles(
+                    discord.Object(ROLE_ID_MAP["FT Enjoyer"]),
+                    discord.Object(ROLE_ID_MAP["DRS Enjoyer"]),
+                    discord.Object(ROLE_ID_MAP["BA Enjoyer"]),
+                )
+                await interaction.response.send_message(
+                    "Roles removed!",
+                    ephemeral=True,
+                )
+
     async def verify_clear(
         self,
         button: discord.ui.Button,
