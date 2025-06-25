@@ -1,3 +1,5 @@
+from datetime import timezone
+
 import globals
 
 import asyncio
@@ -396,6 +398,29 @@ class PhoinixBot(discord.Bot):
             schedule_task(self.unset_deletion_notification_debounce())
             schedule_task(backup_dbs())
 
+    async def handle_fills_channel_message(self, message: discord.Message):
+        member = await self.PEBE.fetch_member(message.author.id)
+        if member is None:
+            print(f"Bad member ID: {message.author.id}")
+        else:
+            for role in member.roles:
+                if role.id in [
+                    ROLE_ID_MAP["Admin"],
+                    ROLE_ID_MAP["Moderator"],
+                    ROLE_ID_MAP["Bots"],
+                ]:
+                    return
+
+        if member.bot:
+            return
+
+        if ROLE_ID_MAP["FT Fills"] not in map(lambda role: role.id, message.role_mentions):
+            await message.delete(reason="Incorrect ping")
+        elif datetime.datetime.now(timezone.utc) - message.created_at >= datetime.timedelta(hours=1):
+            await message.delete(reason="Message too old")
+        else:
+            await message.delete(delay=datetime.timedelta(hours=1).total_seconds(), reason="Message too old")
+
     async def on_message(self, message: discord.Message):
         id = message.channel.id
         if id in REQUIRED_TAGS_MAP:
@@ -413,6 +438,8 @@ class PhoinixBot(discord.Bot):
                 if "lego steppers" in embed.title.lower():
                     print("Deleting schedule...")
                     schedule_task(message.delete(reason="Not a foray server"))
+        elif id == CHANNEL_ID_MAP["ft-fills"]:
+            await self.handle_fills_channel_message(message)
 
         if id in MODERATED_CHANNEL_IDS and message.author.id != self.user.id:
             listener_event = asyncio.Event()
