@@ -82,8 +82,11 @@ REQUIRED_TAGS_MAP = {
 
 ACHIEVEMENT_ID_MAP = {
     "DRS Clear": 2765,
+    "DRS Clear 10x": 2767,
     "BA Clear": 2227,
+    "BA Clear 10x": 2229,
     "FT Clear": 3668,
+    "FT Clear 10x": 3669,
 }
 
 EMOJI_ID_MAP = {
