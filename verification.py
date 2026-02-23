@@ -7,10 +7,10 @@ from utils import validate_server
 
 class VerificationModal(discord.ui.Modal):
     def __init__(self):
-        super().__init__(title="Register Character Data")
+        super().__init__(custom_id="verification_modal", title="Register Character Data")
 
-        self.add_item(discord.ui.InputText(label="Full Character Name"))
-        self.add_item(discord.ui.InputText(label="Character Server"))
+        self.add_item(discord.ui.InputText(custom_id="name", label="Full Character Name"))
+        self.add_item(discord.ui.InputText(custom_id="server", label="Character Server"))
 
     async def callback(self, interaction: discord.Interaction):
         name = " ".join(
@@ -159,6 +159,7 @@ class VerificationView(discord.ui.View):
         )
 
     @discord.ui.string_select(
+        custom_id="roles_modify",
         placeholder="Add/Remove Enjoyer Roles",
         options=[
             discord.SelectOption(label="FT Enjoyer"),
