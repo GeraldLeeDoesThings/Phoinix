@@ -2,30 +2,94 @@ import globals
 import bot
 from const import *
 import discord
-from utils import validate_server
+from utils import validate_server, extract_name_server
+from urllib.parse import urlsplit
 
 
-class VerificationModal(discord.ui.Modal):
+class VerificationModal(discord.ui.DesignerModal):
     def __init__(self):
         super().__init__(custom_id="verification_modal", title="Register Character Data")
 
-        self.add_item(discord.ui.InputText(custom_id="name", label="Full Character Name"))
-        self.add_item(discord.ui.InputText(custom_id="server", label="Character Server"))
+        self.add_item(discord.ui.TextDisplay("Input either your character's name and server, or a link to your character on the lodestone."))
+        self.add_item(discord.ui.InputText(custom_id="name", label="Full Character Name", required=False))
+        self.add_item(discord.ui.InputText(custom_id="server", label="Character Server", required=False))
+        self.add_item(discord.ui.InputText(custom_id="lodestone link", label="Lodestone Link", required=False))
 
     async def callback(self, interaction: discord.Interaction):
-        name = " ".join(
-            part.capitalize() for part in self.children[0].value.split(" ")
-        ).replace("’", "'")
-        server = self.children[1].value.split(" ")[0].capitalize()
+        name_field = self.get_item("name")
+        if name_field is None or not isinstance(name_field, discord.ui.InputText):
+            await interaction.response.send_message(
+                "Modal field 'name' is broken. Ping the admins and share this message.",
+                ephemeral=True,
+            )
+            return
+
+        server_field = self.get_item("server")
+        if server_field is None or not isinstance(server_field, discord.ui.InputText):
+            await interaction.response.send_message(
+                "Modal field 'server' is broken. Ping the admins and share this message.",
+                ephemeral=True,
+            )
+            return
+
+        link_field = self.get_item("lodestone link")
+        if link_field is None or not isinstance(link_field, discord.ui.InputText):
+            await interaction.response.send_message(
+                "Modal field 'lodestone link' is broken. Ping the admins and share this message.",
+                ephemeral=True,
+            )
+            return
+
         fakedefer = await interaction.response.send_message(
             "Searching...", ephemeral=True
         )  # type: discord.Interaction
 
-        validServer, suggestedServer = validate_server(server)
+        character_id = None
+        if name_field.value is not None and server_field.value is not None:
 
-        if not validServer:
+            name = " ".join(
+                part.capitalize() for part in name_field.value.split(" ")
+            ).replace("’", "'")
+            server = server_field.value.split(" ")[0].capitalize()
+
+            valid_server, suggested_server = validate_server(server)
+
+            if not valid_server:
+                await fakedefer.edit_original_response(
+                    content=suggested_server,
+                )
+                return
+        elif link_field.value is not None:
+            try:
+                split_url = urlsplit(link_field.value)
+            except ValueError:
+                await fakedefer.edit_original_response(
+                    content="Failed to parse URL. Please ensure the URL is correct."
+                )
+                return
+            prev_part_is_character = False
+            name_server_pair = None
+            for part in split_url:
+                if prev_part_is_character:
+                    try:
+                        character_id = int(part)
+                    except ValueError:
+                        await fakedefer.edit_original_response(
+                            content=f"Expected '/character/CHARACTER_ID' in URL, but found non-numeric ID: '{part}'"
+                        )
+                        return
+                    name_server_pair = extract_name_server(character_id)
+                prev_part_is_character = part == "character"
+
+            if name_server_pair is None:
+                await fakedefer.edit_original_response(
+                    content="Expected '/character/CHARACTER_ID' in URL, but did not find character ID in path."
+                )
+                return
+            name, server = name_server_pair
+        else:
             await fakedefer.edit_original_response(
-                content=suggestedServer,
+                content="Either provide a character name and server, or a URL to your character on the lodestone."
             )
             return
 
@@ -33,6 +97,7 @@ class VerificationModal(discord.ui.Modal):
             interaction.user.id,
             name,
             server,
+            character_id,
         ):
             await fakedefer.edit_original_response(
                 content=(
