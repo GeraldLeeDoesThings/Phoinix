@@ -469,7 +469,7 @@ class PhoinixBot(discord.Bot):
             return
         member = await self.PEBE.fetch_member(message.author.id)
         if member is not None:
-            if ROLE_ID_MAP["Admin"] in member.roles:
+            if ROLE_ID_MAP["Admin"] in set(role.id for role in member.roles):
                 await message.reply("Stop talking in here")
                 return
 
