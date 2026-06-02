@@ -20,6 +20,7 @@ CHANNEL_ID_MAP = {
     "na-drs-schedule": 1279872027544653857,
     "ft-recruiting": 1350184451979743362,
     "ft-fills": 1385737144693162034,
+    "death": 1507142762498232494,
 }
 
 ROLE_ID_MAP = {

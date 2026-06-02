@@ -444,6 +444,8 @@ class PhoinixBot(discord.Bot):
                     schedule_task(message.delete(reason="Not a foray server"))
         elif id == CHANNEL_ID_MAP["ft-fills"]:
             await self.handle_fills_channel_message(message)
+        elif id == CHANNEL_ID_MAP["death"]:
+            await self.handle_death_message(message)
 
         if id in MODERATED_CHANNEL_IDS and message.author.id != self.user.id:
             listener_event = asyncio.Event()
@@ -456,6 +458,29 @@ class PhoinixBot(discord.Bot):
                     do_notifications=DO_NOTIFICATIONS_MAP.get(id, True),
                 )
             )
+
+    async def handle_death_message(self, message: discord.Message):
+        if message.author.bot and message.author.id != self.user.id:
+            await message.reply(
+                "01010011 01110100 01101111 01110000 00100000 01110100 01100001 01101100 01101011 "
+                "01101001 01101110 01100111 00100000 01101001 01101110 00100000 01101000 01100101 "
+                "01110010 01100101"
+            )
+            return
+        member = await self.PEBE.fetch_member(message.author.id)
+        if member is not None:
+            if ROLE_ID_MAP["Admin"] in member.roles:
+                await message.reply("Stop talking in here")
+                return
+
+        await message.author.ban(
+            delete_message_seconds=604800,
+            reason="Spoke in the forbidden realm",
+        )
+        await asyncio.sleep(10)
+        await message.author.unban(
+            reason="Message deletion hack"
+        )
 
     async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
         if payload.channel_id == CHANNEL_ID_MAP["roles"]:
