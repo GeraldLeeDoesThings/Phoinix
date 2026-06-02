@@ -45,7 +45,7 @@ class VerificationModal(discord.ui.DesignerModal):
         )  # type: discord.Interaction
 
         character_id = None
-        if name_field.value is not None and server_field.value is not None:
+        if name_field.value is not None and len(name_field.value) > 0 and server_field.value is not None and len(server_field.value) > 0:
 
             name = " ".join(
                 part.capitalize() for part in name_field.value.split(" ")
@@ -59,7 +59,7 @@ class VerificationModal(discord.ui.DesignerModal):
                     content=suggested_server,
                 )
                 return
-        elif link_field.value is not None:
+        elif link_field.value is not None and len(link_field.value) > 0:
             try:
                 split_url = urlsplit(link_field.value)
             except ValueError:
@@ -69,7 +69,7 @@ class VerificationModal(discord.ui.DesignerModal):
                 return
             prev_part_is_character = False
             name_server_pair = None
-            for part in split_url:
+            for part in split_url.path.split("/"):
                 if prev_part_is_character:
                     try:
                         character_id = int(part)
