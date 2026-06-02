@@ -460,19 +460,20 @@ class PhoinixBot(discord.Bot):
             )
 
     async def handle_death_message(self, message: discord.Message):
-        if message.author.bot and message.author.id != self.user.id:
-            await message.reply(
-                "01010011 01110100 01101111 01110000 00100000 01110100 01100001 01101100 01101011 "
-                "01101001 01101110 01100111 00100000 01101001 01101110 00100000 01101000 01100101 "
-                "01110010 01100101"
-            )
+        if message.author.bot:
+            if message.author.id != self.user.id:
+                await message.reply(
+                    "01010011 01110100 01101111 01110000 00100000 01110100 01100001 01101100 01101011 "
+                    "01101001 01101110 01100111 00100000 01101001 01101110 00100000 01101000 01100101 "
+                    "01110010 01100101"
+                )
             return
+        
         member = await self.PEBE.fetch_member(message.author.id)
-        if member is not None:
-            if ROLE_ID_MAP["Admin"] in set(role.id for role in member.roles):
-                await message.reply("Stop talking in here")
-                return
-
+        if member is not None and ROLE_ID_MAP["Admin"] in [role.id for role in member.roles]:
+            await message.reply("Stop talking in here")
+            return
+        
         await message.author.ban(
             delete_message_seconds=604800,
             reason="Spoke in the forbidden realm",
