@@ -43,7 +43,7 @@ ROLE_ID_MAP = {
     "FT Reclear": 1350200965839585343,
     "Volunteer FT Shotcaller": 1379526858403479682,
     "FT Gold Farm": 1377155818356477992,
-    "FT Fills": 1374201233954574417,
+    "FTB Fills": 1374201233954574417,
     "Sporks": 1374201233954574417,
     "Crescent Levelling": 1350201911550148678,
     "Cleared FT": 1294582065307582564,
@@ -53,6 +53,7 @@ ROLE_ID_MAP = {
     "Member": 1029923728588550214,
     "Not Verified": 1034714964553904178,
     "Bots": 1030286995404099584,
+    "FTM Fills": 1498974428833382520,
 }
 
 REQUIRED_TAGS_MAP = {
@@ -78,6 +79,10 @@ REQUIRED_TAGS_MAP = {
     CHANNEL_ID_MAP["ft-recruiting"]: {
         ROLE_ID_MAP["FT Learning"],
         ROLE_ID_MAP["FT Reclear"],
+    },
+    CHANNEL_ID_MAP["ft-fills"]: {
+        ROLE_ID_MAP["FTB Fills"],
+        ROLE_ID_MAP["FTM Fills"],
     },
 }
 
