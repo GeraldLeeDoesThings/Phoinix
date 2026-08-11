@@ -1,3 +1,5 @@
+from typing import Optional
+
 import globals
 import bot
 from const import *
@@ -213,7 +215,7 @@ class VerificationView(discord.ui.View):
         style=discord.ButtonStyle.primary,
     )
     async def verify_ft_clear(
-            self, button: discord.ui.Button, interaction: discord.Interaction
+        self, button: discord.ui.Button, interaction: discord.Interaction
     ):
         await self.verify_clear(
             button,
@@ -223,10 +225,27 @@ class VerificationView(discord.ui.View):
             ROLE_ID_MAP["Cleared FT"],
         )
 
+    @discord.ui.button(
+        label="Verify FTMEx Clear",
+        custom_id="verify_ftmex",
+        style=discord.ButtonStyle.primary,
+    )
+    async def verify_ftmex_clear(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
+        await self.verify_clear(
+            button,
+            interaction,
+            ACHIEVEMENT_ID_MAP["FTMEx Clear"],
+            None,
+            ROLE_ID_MAP["Cleared FTMEx"],
+        )
+
     @discord.ui.string_select(
         custom_id="roles_modify",
         placeholder="Add/Remove Enjoyer Roles",
         options=[
+            discord.SelectOption(label="FTMEx Enjoyer"),
             discord.SelectOption(label="FT Enjoyer"),
             discord.SelectOption(label="DRS Enjoyer"),
             discord.SelectOption(label="BA Enjoyer"),
@@ -248,6 +267,7 @@ class VerificationView(discord.ui.View):
             return
 
         selection_mappings = {
+            "FTMEx Enjoyer": {"needed achievement": "FTMEx Clear 10x", "given role": "FTMEx Enjoyer", "missing msg": "FTMEx Clear"},
             "FT Enjoyer": {"needed achievement": "FT Clear 10x", "given role": "FT Enjoyer", "missing msg": "FT Clear"},
             "DRS Enjoyer": {"needed achievement": "DRS Clear 10x", "given role": "DRS Enjoyer", "missing msg": "DRS Clear"},
             "BA Enjoyer": {"needed achievement": "BA Clear 10x", "given role": "BA Enjoyer", "missing msg": "BA Clear"},
@@ -285,7 +305,7 @@ class VerificationView(discord.ui.View):
         button: discord.ui.Button,
         interaction: discord.Interaction,
         achievement_id: int,
-        mount_id: str,
+        mount_id: Optional[str],
         role: int,
     ):
         if not bot.known_discord_id(interaction.user.id):
@@ -306,7 +326,8 @@ class VerificationView(discord.ui.View):
                 "Checking achievements...", ephemeral=True
             )  # type: discord.Interaction
             ffxiv_id = bot.get_user_ffxiv_id(interaction.user.id)
-            has = bot.validate_mount(ffxiv_id, mount_id) or bot.user_has_achievement(
+            has_mount = False if mount_id is None else bot.validate_mount(ffxiv_id, mount_id)
+            has = has_mount or bot.user_has_achievement(
                 ffxiv_id, achievement_id
             )
             if has is None:

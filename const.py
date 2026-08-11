@@ -54,6 +54,8 @@ ROLE_ID_MAP = {
     "Not Verified": 1034714964553904178,
     "Bots": 1030286995404099584,
     "FTM Fills": 1498974428833382520,
+    "Cleared FTMEx": 1498974565307514970,
+    "FTMEx Enjoyer": 1498974569049096384,
 }
 
 REQUIRED_TAGS_MAP = {
@@ -93,6 +95,8 @@ ACHIEVEMENT_ID_MAP = {
     "BA Clear 10x": 2229,
     "FT Clear": 3668,
     "FT Clear 10x": 3669,
+    "FTMEx Clear": 4010,
+    "FTMEx Clear 10x": 4013,
 }
 
 EMOJI_ID_MAP = {
