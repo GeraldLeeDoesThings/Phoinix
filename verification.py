@@ -267,10 +267,10 @@ class VerificationView(discord.ui.View):
             return
 
         selection_mappings = {
-            "FTMEx Enjoyer": {"needed achievement": "FTMEx Clear 10x", "given role": "FTMEx Enjoyer", "missing msg": "FTMEx Clear"},
-            "FT Enjoyer": {"needed achievement": "FT Clear 10x", "given role": "FT Enjoyer", "missing msg": "FT Clear"},
-            "DRS Enjoyer": {"needed achievement": "DRS Clear 10x", "given role": "DRS Enjoyer", "missing msg": "DRS Clear"},
-            "BA Enjoyer": {"needed achievement": "BA Clear 10x", "given role": "BA Enjoyer", "missing msg": "BA Clear"},
+            "FTMEx Enjoyer": {"needed achievement": "FTMEx Clear 20x", "given role": "FTMEx Enjoyer", "missing msg": "20 FTMEx Clear"},
+            "FT Enjoyer": {"needed achievement": "FT Clear 10x", "given role": "FT Enjoyer", "missing msg": "10 FT Clear"},
+            "DRS Enjoyer": {"needed achievement": "DRS Clear 10x", "given role": "DRS Enjoyer", "missing msg": "10 DRS Clear"},
+            "BA Enjoyer": {"needed achievement": "BA Clear 10x", "given role": "BA Enjoyer", "missing msg": "10 BA Clear"},
         }
         for selection in select.values:
             mapping = selection_mappings.get(selection, None)
@@ -286,7 +286,7 @@ class VerificationView(discord.ui.View):
                     )
                 else:
                     await interaction.response.send_message(
-                        f"You must have 10 {mapping['missing msg']}s before you can claim this role!",
+                        f"You must have {mapping['missing msg']}s before you can claim this role!",
                         ephemeral=True,
                     )
             elif selection == "Remove Enjoyer Roles":

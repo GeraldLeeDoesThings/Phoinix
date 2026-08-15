@@ -96,7 +96,7 @@ ACHIEVEMENT_ID_MAP = {
     "FT Clear": 3668,
     "FT Clear 10x": 3669,
     "FTMEx Clear": 4010,
-    "FTMEx Clear 10x": 4013,
+    "FTMEx Clear 20x": 4012,
 }
 
 EMOJI_ID_MAP = {
