@@ -168,8 +168,10 @@ class VerificationView(discord.ui.View):
                     )
                 await self.bot.fix_name(member)
                 await response.edit_original_response(content="Successfully verified!")
-            except discord.HTTPException:
-                print("Adding role failed!")
+            except discord.HTTPException as discord_exception:
+                print(
+                    f"Adding role failed ({discord_exception.status}|{discord_exception.code}) with text: {discord_exception.text}"
+                )
                 await response.edit_original_response(
                     content=(
                         "Something has gone wrong (not your fault). Click the Verify"
@@ -344,8 +346,10 @@ class VerificationView(discord.ui.View):
                     await response.edit_original_response(
                         content="Role successfully added!"
                     )
-                except discord.HTTPException:
-                    print("Adding role failed!")
+                except discord.HTTPException as discord_exception:
+                    print(
+                        f"Adding role failed ({discord_exception.status}|{discord_exception.code}) with text: {discord_exception.text}"
+                    )
                     await response.edit_original_response(
                         content=(
                             "Something has gone wrong (not your fault). Click the"
