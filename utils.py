@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import bs4
+from tenacity import retry, stop_after_attempt, stop_after_delay
+
 from const import *
 import datetime
 import discord
@@ -142,18 +144,27 @@ def lodestone_search(
     return None
 
 
+@retry(stop=stop_after_attempt(5) | stop_after_delay(10))
 def extract_name_server(
-    id: int, req: Optional[requests.Response] = None
+    character_id: int, req: Optional[requests.Response] = None
 ) -> Optional[Tuple[str, str]]:
-    request = req if req is not None else requests.get(f"{LODESTONE_BASE_URL}{id}")
+    request = req if req is not None else requests.get(f"{LODESTONE_BASE_URL}{character_id}")
     if request.status_code == 404:
         return None
     result = bs4.BeautifulSoup(
         request.content.decode(),
         "html.parser",
     )
-    name = result.find("p", "frame__chara__name").text
-    server = result.find("p", "frame__chara__world").text
+    name = result.find("p", "frame__chara__name")
+    if name is None:
+        return None
+    else:
+        name = name.text
+    server = result.find("p", "frame__chara__world")
+    if server is None:
+        return None
+    else:
+        server = server.text
     return name, server
 
 

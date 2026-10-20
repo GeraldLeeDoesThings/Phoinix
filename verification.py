@@ -85,7 +85,7 @@ class VerificationModal(discord.ui.DesignerModal):
 
             if name_server_pair is None:
                 await fakedefer.edit_original_response(
-                    content="Expected '/character/CHARACTER_ID' in URL, but did not find character ID in path."
+                    content="Failed to find character!"
                 )
                 return
             name, server = name_server_pair
