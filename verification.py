@@ -13,9 +13,9 @@ class VerificationModal(discord.ui.DesignerModal):
         super().__init__(custom_id="verification_modal", title="Register Character Data")
 
         self.add_item(discord.ui.TextDisplay("Input either your character's name and server, or a link to your character on the lodestone."))
-        self.add_item(discord.ui.Label("Full Character Name", item=discord.ui.InputText(custom_id="name", required=False)))
-        self.add_item(discord.ui.Label("Character Server", item=discord.ui.InputText(custom_id="server", required=False)))
-        self.add_item(discord.ui.Label("Lodestone Link", item=discord.ui.InputText(custom_id="lodestone link", required=False)))
+        self.add_item(discord.ui.Label("Full Character Name", item=discord.ui.TextInput(custom_id="name", required=False)))
+        self.add_item(discord.ui.Label("Character Server", item=discord.ui.TextInput(custom_id="server", required=False)))
+        self.add_item(discord.ui.Label("Lodestone Link", item=discord.ui.TextInput(custom_id="lodestone link", required=False)))
 
     async def callback(self, interaction: discord.Interaction):
         name_field = self.get_item("name")
