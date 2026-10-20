@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import bs4
-from tenacity import retry, stop_after_attempt, stop_after_delay
+from tenacity import retry, stop_after_attempt, stop_after_delay, wait_fixed
 
 from const import *
 import datetime
@@ -144,7 +144,7 @@ def lodestone_search(
     return None
 
 
-@retry(stop=stop_after_attempt(5) | stop_after_delay(10))
+@retry(stop=stop_after_attempt(5) | stop_after_delay(10), wait=wait_fixed(1))
 def extract_name_server(
     character_id: int, req: Optional[requests.Response] = None
 ) -> Optional[Tuple[str, str]]:
