@@ -8,18 +8,18 @@ from utils import validate_server, extract_name_server
 from urllib.parse import urlsplit
 
 
-class VerificationModal(discord.ui.DesignerModal):
+class VerificationModal(discord.ui.Modal):
     def __init__(self):
         super().__init__(custom_id="verification_modal", title="Register Character Data")
 
         self.add_item(discord.ui.TextDisplay("Input either your character's name and server, or a link to your character on the lodestone."))
-        self.add_item(discord.ui.Label("Full Character Name", item=discord.ui.TextInput(custom_id="name", required=False)))
-        self.add_item(discord.ui.Label("Character Server", item=discord.ui.TextInput(custom_id="server", required=False)))
-        self.add_item(discord.ui.Label("Lodestone Link", item=discord.ui.TextInput(custom_id="lodestone link", required=False)))
+        self.add_item(discord.ui.Label(text="Full Character Name", component=discord.ui.TextInput(custom_id="name", required=False)))
+        self.add_item(discord.ui.Label(text="Character Server", component=discord.ui.TextInput(custom_id="server", required=False)))
+        self.add_item(discord.ui.Label(text="Lodestone Link", component=discord.ui.TextInput(custom_id="lodestone link", required=False)))
 
     async def callback(self, interaction: discord.Interaction):
         name_field = self.get_item("name")
-        if name_field is None or not isinstance(name_field, discord.ui.InputText):
+        if name_field is None or not isinstance(name_field, discord.ui.TextInput):
             await interaction.response.send_message(
                 "Modal field 'name' is broken. Ping the admins and share this message.",
                 ephemeral=True,
@@ -27,7 +27,7 @@ class VerificationModal(discord.ui.DesignerModal):
             return
 
         server_field = self.get_item("server")
-        if server_field is None or not isinstance(server_field, discord.ui.InputText):
+        if server_field is None or not isinstance(server_field, discord.ui.TextInput):
             await interaction.response.send_message(
                 "Modal field 'server' is broken. Ping the admins and share this message.",
                 ephemeral=True,
@@ -35,7 +35,7 @@ class VerificationModal(discord.ui.DesignerModal):
             return
 
         link_field = self.get_item("lodestone link")
-        if link_field is None or not isinstance(link_field, discord.ui.InputText):
+        if link_field is None or not isinstance(link_field, discord.ui.TextInput):
             await interaction.response.send_message(
                 "Modal field 'lodestone link' is broken. Ping the admins and share this message.",
                 ephemeral=True,
