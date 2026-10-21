@@ -168,14 +168,14 @@ def extract_name_server(
     )
     name = result.find("p", "frame__chara__name")
     if name is None:
-        print("Got strange response from Lodestone: {request.content}")
+        print(f"Got strange response from Lodestone: {request.content}")
         raise ValueError("Unexpected response from Lodestone!")
     else:
         name = name.text
 
     server = result.find("p", "frame__chara__world")
     if server is None:
-        print("Got strange response from Lodestone: {request.content}")
+        print(f"Got strange response from Lodestone: {request.content}")
         raise ValueError("Unexpected response from Lodestone!")
     else:
         server = server.text
