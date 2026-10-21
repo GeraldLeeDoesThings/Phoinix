@@ -168,11 +168,14 @@ def extract_name_server(
     )
     name = result.find("p", "frame__chara__name")
     if name is None:
+        print("Got strange response from Lodestone: {request.content}")
         raise ValueError("Unexpected response from Lodestone!")
     else:
         name = name.text
+
     server = result.find("p", "frame__chara__world")
     if server is None:
+        print("Got strange response from Lodestone: {request.content}")
         raise ValueError("Unexpected response from Lodestone!")
     else:
         server = server.text
@@ -187,7 +190,11 @@ def full_validate(
     server = registered_data["server"]
     token = registered_data["token"]
     resp = API_SESSION.get(f"{LODESTONE_BASE_URL}{cid}")
-    fname, fserver = extract_name_server(cid, resp)
+    name_server_pair = extract_name_server(cid, resp)
+    if name_server_pair is None:
+        return f"Failed to retreive name and server for character with ID {cid}. Try registering again."
+
+    fname, fserver = name_server_pair
     if fname != name:
         return (
             f"Name {name} does not match name associated with character with ID {cid},"

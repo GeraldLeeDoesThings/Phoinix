@@ -42,7 +42,10 @@ def get_user_ffxiv_name_server(id: int) -> Optional[Tuple[str, str]]:
     if known_discord_id(id):
         maybe_name = globals.verification_map[id]["name"]
         if maybe_name is None:
-            name, server = extract_name_server(globals.verification_map[id]["id"])
+            name_server_pair = extract_name_server(globals.verification_map[id]["id"])
+            if name_server_pair is None:
+                return None
+            name, server = name_server_pair
             globals.verification_map[id]["name"] = name
             globals.verification_map[id]["server"] = server
             return name, server
