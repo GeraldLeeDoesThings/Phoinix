@@ -2,15 +2,14 @@ from sqlalchemy import create_engine, URL
 from sqlalchemy.orm import Session
 
 with open("secrets/db_token", "r") as db_token_file:
-    db_token = db_token_file.read()
+    db_token = db_token_file.read().strip('\n')
 
 engine_url = URL.create(
     "mysql+pymysql",
     host="GeraldPython.mysql.pythonanywhere-services.com",
-    port=3306,
     username="GeraldPython",
     password=db_token,
-    database="Phoinix",
+    database="GeraldPython$Phoinix",
 )
 engine = create_engine(engine_url)
 
