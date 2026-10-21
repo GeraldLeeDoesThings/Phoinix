@@ -28,7 +28,7 @@ CALLS_REMAINING = MAX_RATE
 CALL_LOCK = asyncio.Lock()
 HAS_CALLS = asyncio.Condition(CALL_LOCK)
 API_SESSION = requests.Session()
-API_SESSION.params["private_key"] = xivapikey
+# API_SESSION.params["private_key"] = xivapikey
 
 
 async def consume_limited_call():
@@ -116,7 +116,7 @@ def lodestone_search(
     numPages = 1
 
     while page <= min(numPages, 5):
-        request = requests.get(
+        request = API_SESSION.get(
             LODESTONE_BASE_URL, params={"q": "\"" + name + "\"", "page": page, "worldname": server}
         )
         result = bs4.BeautifulSoup(
@@ -152,7 +152,7 @@ def lodestone_search(
 def extract_name_server(
     character_id: int, req: Optional[requests.Response] = None
 ) -> Optional[Tuple[str, str]]:
-    request = req if req is not None else requests.get(f"{LODESTONE_BASE_URL}{character_id}")
+    request = req if req is not None else API_SESSION.get(f"{LODESTONE_BASE_URL}{character_id}")
     if request.status_code == 404:
         return None
     result = bs4.BeautifulSoup(
@@ -179,7 +179,7 @@ def full_validate(
     name = registered_data["name"]
     server = registered_data["server"]
     token = registered_data["token"]
-    resp = requests.get(f"{LODESTONE_BASE_URL}{cid}")
+    resp = API_SESSION.get(f"{LODESTONE_BASE_URL}{cid}")
     fname, fserver = extract_name_server(cid, resp)
     if fname != name:
         return (
@@ -213,7 +213,7 @@ async def refresh_calls_loop():
 def user_has_token_in_profile(
     ffxiv_id: int, token: str, resp: Optional[requests.Response] = None
 ) -> bool:
-    resp = resp if resp is not None else requests.get(f"{LODESTONE_BASE_URL}{ffxiv_id}")
+    resp = resp if resp is not None else API_SESSION.get(f"{LODESTONE_BASE_URL}{ffxiv_id}")
     profile = bs4.BeautifulSoup(resp.content.decode(), "html.parser",).find_all(
         "div", "character__selfintroduction"
     )[
@@ -227,7 +227,7 @@ def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]
     ACHIEVEMENT_BASE_URL = (
         f"{LODESTONE_BASE_URL}{ffxiv_id}{LODESTONE_ACHIEVEMENT_BASE_URL}"
     )
-    req = requests.get(f"{ACHIEVEMENT_BASE_URL}{achievement_code}/")
+    req = API_SESSION.get(f"{ACHIEVEMENT_BASE_URL}{achievement_code}/")
     if req.status_code == 404:
         return None  # signals hidden achievements
     return (
@@ -308,7 +308,7 @@ def validate_server(server: str) -> (bool, str):
 
 def validate_mount(ffxiv_id: int, mount_id: str) -> bool:
 
-    req = requests.get(f"{LODESTONE_BASE_URL}{ffxiv_id}/mount/")
+    req = API_SESSION.get(f"{LODESTONE_BASE_URL}{ffxiv_id}/mount/")
     parsed = bs4.BeautifulSoup(req.text, "html.parser")
     return (
         parsed.find(
