@@ -29,6 +29,13 @@ CALL_LOCK = asyncio.Lock()
 HAS_CALLS = asyncio.Condition(CALL_LOCK)
 API_SESSION = requests.Session()
 # API_SESSION.params["private_key"] = xivapikey
+API_SESSION.headers.update(
+    {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://google.com"
+    }
+)
 
 
 async def consume_limited_call():
