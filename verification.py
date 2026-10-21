@@ -296,6 +296,7 @@ class VerificationView(discord.ui.View):
                     discord.Object(ROLE_ID_MAP["FT Enjoyer"]),
                     discord.Object(ROLE_ID_MAP["DRS Enjoyer"]),
                     discord.Object(ROLE_ID_MAP["BA Enjoyer"]),
+                    discord.Object(ROLE_ID_MAP["FTMEx Enjoyer"]),
                 )
                 await interaction.response.send_message(
                     "Roles removed!",
