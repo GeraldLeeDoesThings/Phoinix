@@ -549,7 +549,7 @@ class PhoinixBot(discord.Bot):
             if mname.startswith(first) or mname.lower().startswith(first.lower()[:3]):
                 print(f"Skipping name fix for {mname} with first {first}")
                 return
-            await member.edit(nick=nspair[:32])
+            await member.edit(nick=name[:32])
 
     async def parse_console_command(self, command):
         if command.startswith("send"):

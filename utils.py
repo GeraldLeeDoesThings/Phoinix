@@ -145,9 +145,9 @@ def lodestone_search(
 
 
 @retry(
-    stop=stop_after_attempt(5) | stop_after_delay(10),
-    wait=wait_fixed(1),
-    retry=retry_if_result(lambda result: result is None),
+    stop=stop_after_attempt(5),
+    wait=wait_fixed(10),
+    retry_error_callback=lambda error_state: None,
 )
 def extract_name_server(
     character_id: int, req: Optional[requests.Response] = None
@@ -161,12 +161,12 @@ def extract_name_server(
     )
     name = result.find("p", "frame__chara__name")
     if name is None:
-        return None
+        raise ValueError("Unexpected response from Lodestone!")
     else:
         name = name.text
     server = result.find("p", "frame__chara__world")
     if server is None:
-        return None
+        raise ValueError("Unexpected response from Lodestone!")
     else:
         server = server.text
     return name, server
