@@ -3,7 +3,7 @@ import globals
 import asyncio
 import ba_recruiting
 from db import get_session
-from query import register_user, get_user_ffxiv_name_server, get_by_ffxiv_name
+from query import get_by_ffxiv_name
 from utils import *
 from urllib.parse import urlparse, urlunparse
 from verification import *

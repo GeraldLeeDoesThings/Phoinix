@@ -4,9 +4,9 @@ import globals
 import bot
 from const import *
 import discord
-from query import register_user, get_user_token, get_user_ffxiv_id, get_by_discord_id, commit_user
+from query import get_user_token, get_user_ffxiv_id, get_by_discord_id, commit_user
 from db import get_session
-from utils import validate_server, extract_name_server
+from utils import validate_server, extract_name_server, register_user
 from urllib.parse import urlsplit
 
 

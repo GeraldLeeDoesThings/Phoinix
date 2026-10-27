@@ -16,7 +16,7 @@ def get_by_discord_id(session: Session, discord_id: int) -> Optional[User]:
     select_statement = select(User).where(
         discord_id == User.discord_id
     )
-    return session.execute(select_statement).first()
+    return session.execute(select_statement).scalars().first()
 
 
 def get_by_ffxiv_name(
