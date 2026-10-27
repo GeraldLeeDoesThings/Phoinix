@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from secrets import token_urlsafe
+
 import bs4
 from tenacity import retry, stop_after_attempt, stop_after_delay, wait_fixed, retry_if_result
 
@@ -9,12 +11,14 @@ import datetime
 import discord
 import globals
 import json
+from models import User
 import nltk
 import re
 import requests
 import types
 from typing import *
 
+from query import get_user_token
 
 if TYPE_CHECKING:
     from bot import PhoinixBot
@@ -183,36 +187,40 @@ def extract_name_server(
 
 
 def full_validate(
-    registered_data: Dict[str, Union[bool, int, str]]
-) -> Union[str, Dict[str, Union[bool, int, str]]]:
-    cid = registered_data["id"]
-    name = registered_data["name"]
-    server = registered_data["server"]
-    token = registered_data["token"]
-    resp = API_SESSION.get(f"{LODESTONE_BASE_URL}{cid}")
-    name_server_pair = extract_name_server(cid, resp)
+    user: User
+) -> User | str:
+
+    if user.ffxiv_id is None:
+        return "User has no associated FFXIV character id!"
+
+    response = API_SESSION.get(f"{LODESTONE_BASE_URL}{user.ffxiv_id}")
+    name_server_pair = extract_name_server(user.ffxiv_id, response)
     if name_server_pair is None:
-        return f"Failed to retreive name and server for character with ID {cid}. Try registering again."
+        return f"Failed to retrieve name and server for character with ID {user.ffxiv_id}. Try registering again."
 
     fname, fserver = name_server_pair
-    if fname != name:
+    if fname != user.ffxiv_name:
         return (
-            f"Name {name} does not match name associated with character with ID {cid},"
+            f"Name {user.ffxiv_name} does not match name associated with character with ID {user.ffxiv_id},"
             f" {fname}. Try using the Register button again."
         )
-    if fserver.split(" ")[0] != server.split(" ")[0]:
+    if fserver.split(" ")[0] != user.ffxiv_server.split(" ")[0]:
         return (
-            f"Server {server} does not match server associated with character with ID"
-            f" {cid}, {fserver}. Try using the Register button again."
+            f"Server {user.ffxiv_server} does not match server associated with character with ID"
+            f" {user.ffxiv_id}, {fserver}. Try using the Register button again."
         )
-    if not user_has_token_in_profile(cid, token, resp):
+
+    if user.token is None:
+        user.token = token_urlsafe(8)
+
+    if not user_has_token_in_profile(user.ffxiv_id, user.token, response):
         return (
-            f"Token, `{token}` (can be copied from {ECHO_TOKEN_URL}{token}), not found"
-            f" in character profile at {LODESTONE_BASE_URL}{cid}\n Additionally, **ensure your lodestone is not set to private.**"
+            f"Token, `{user.token}` (can be copied from {ECHO_TOKEN_URL}{user.token}), not found"
+            f" in character profile at {LODESTONE_BASE_URL}{user.ffxiv_id}\n Additionally, **ensure your lodestone is not set to private.**"
         )
-    registered_data["server"] = fserver  # Adds [Datacenter]
-    registered_data["valid"] = True
-    return registered_data
+    user.ffxiv_server = fserver  # Adds [Datacenter]
+    user.valid = True
+    return user
 
 
 async def refresh_calls_loop():
@@ -284,16 +292,6 @@ def generate_button(
     )
     button.callback = types.MethodType(callback, button)
     return button
-
-
-def load_verification_map():
-    with open("data/verification_map.json", "r") as loadfile:
-        str_verification_map = json.load(
-            loadfile
-        )  # type: Dict[str, Dict[str, Union[bool, int, str]]]
-        for key in str_verification_map.keys():
-            globals.verification_map[int(key)] = str_verification_map[key]
-        print(f"Loaded {len(globals.verification_map)} users.")
 
 
 def load_ba_run_map(bot: PhoinixBot):

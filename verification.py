@@ -4,6 +4,8 @@ import globals
 import bot
 from const import *
 import discord
+from query import register_user, get_user_token, get_user_ffxiv_id, get_by_discord_id, commit_user
+from db import get_session
 from utils import validate_server, extract_name_server
 from urllib.parse import urlsplit
 
@@ -95,23 +97,25 @@ class VerificationModal(discord.ui.DesignerModal):
             )
             return
 
-        if await bot.register_user(
-            interaction.user.id,
-            name,
-            server,
-            character_id,
-        ):
-            await fakedefer.edit_original_response(
-                content=(
-                    f"Registration successful! Add `{bot.get_user_token(interaction.user.id)}`"
-                    " to your character profile on the Lodestone, then **click the"
-                    " Verify button.** If you cannot copy your token, try copying from"
-                    f" {ECHO_TOKEN_URL}{bot.get_user_token(interaction.user.id)}\nYour"
-                    " character profile can be found here:"
-                    " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
-                ),
-            )
-            return
+        with get_session() as session:
+            if register_user(
+                session,
+                discord_id=interaction.user.id,
+                ffxiv_name=name,
+                ffxiv_server=server,
+                ffxiv_id=character_id,
+            ):
+                await fakedefer.edit_original_response(
+                    content=(
+                        f"Registration successful! Add `{get_user_token(session, interaction.user.id)}`"
+                        " to your character profile on the Lodestone, then **click the"
+                        " Verify button.** If you cannot copy your token, try copying from"
+                        f" {ECHO_TOKEN_URL}{get_user_token(session, interaction.user.id)}\nYour"
+                        " character profile can be found here:"
+                        " https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
+                    ),
+                )
+                return
         await fakedefer.edit_original_response(
             content=(
                 f"Could not find character with:\nName: {name}\nServer:"
@@ -141,43 +145,45 @@ class VerificationView(discord.ui.View):
         response = await interaction.response.send_message(
             "Verifying...", ephemeral=True
         )  # type: discord.Interaction
-        if not bot.known_discord_id(interaction.user.id):
-            await response.edit_original_response(
-                content=(
-                    "You must register first! Click the Register button and follow the"
-                    " instructions."
-                ),
-            )
-            return
-        if globals.verification_map[interaction.user.id]["valid"]:
-            await response.edit_original_response(content="You are already verified!")
-            member = await self.bot.fetch_member(interaction.user.id)
-            await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
-            return
-        result = bot.full_validate(globals.verification_map[interaction.user.id])
-        if type(result) == str:
-            await response.edit_original_response(content=result)
-        else:
-            try:
-                globals.verification_map[interaction.user.id] = result
-                member = await self.bot.fetch_member(interaction.user.id)
-                await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
-                if ROLE_ID_MAP["Not Verified"] in [role.id for role in member.roles]:
-                    await member.remove_roles(
-                        discord.Object(ROLE_ID_MAP["Not Verified"])
-                    )
-                await self.bot.fix_name(member)
-                await response.edit_original_response(content="Successfully verified!")
-            except discord.HTTPException as discord_exception:
-                print(
-                    f"Adding role failed ({discord_exception.status}|{discord_exception.code}) with text: {discord_exception.text}"
-                )
+        with get_session() as session:
+            user = get_by_discord_id(session, interaction.user.id)
+            if user is None:
                 await response.edit_original_response(
                     content=(
-                        "Something has gone wrong (not your fault). Click the Verify"
-                        " button again, and if errors continue, contact the staff."
-                    )
+                        "You must register first! Click the Register button and follow the"
+                        " instructions."
+                    ),
                 )
+                return
+            if user.valid:
+                await response.edit_original_response(content="You are already verified!")
+                member = await self.bot.fetch_member(interaction.user.id)
+                await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
+                return
+            result = bot.full_validate(user)
+            if type(result) == str:
+                await response.edit_original_response(content=result)
+            else:
+                try:
+                    commit_user(session, user)
+                    member = await self.bot.fetch_member(interaction.user.id)
+                    await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
+                    if ROLE_ID_MAP["Not Verified"] in [role.id for role in member.roles]:
+                        await member.remove_roles(
+                            discord.Object(ROLE_ID_MAP["Not Verified"])
+                        )
+                    await self.bot.fix_name(member)
+                    await response.edit_original_response(content="Successfully verified!")
+                except discord.HTTPException as discord_exception:
+                    print(
+                        f"Adding role failed ({discord_exception.status}|{discord_exception.code}) with text: {discord_exception.text}"
+                    )
+                    await response.edit_original_response(
+                        content=(
+                            "Something has gone wrong (not your fault). Click the Verify"
+                            " button again, and if errors continue, contact the staff."
+                        )
+                    )
 
     @discord.ui.button(
         label="Verify BA Clear",
@@ -260,7 +266,8 @@ class VerificationView(discord.ui.View):
         interaction: discord.Interaction,
     ):
         member = interaction.user
-        ffxiv_id = bot.get_user_ffxiv_id(interaction.user.id)
+        with get_session() as session:
+            ffxiv_id = get_user_ffxiv_id(session, interaction.user.id)
         if ffxiv_id is None:
             await interaction.response.send_message(
                 "You must register and verify first!",
@@ -311,14 +318,16 @@ class VerificationView(discord.ui.View):
         mount_id: Optional[str],
         role: int,
     ):
-        if not bot.known_discord_id(interaction.user.id):
+        with get_session() as session:
+            user_data = get_by_discord_id(session, interaction.user.id)
+        if user_data is None:
             await interaction.response.send_message(
                 "You are not registered! Click the Register button, follow the"
                 " instructions, then click the Verify button, then try this button"
                 " again.",
                 ephemeral=True,
             )
-        elif not globals.verification_map[interaction.user.id]["valid"]:
+        elif not user_data.valid:
             await interaction.response.send_message(
                 "You are not verified! Click the Verify button, then try this button"
                 " again.",
@@ -328,7 +337,7 @@ class VerificationView(discord.ui.View):
             response = await interaction.response.send_message(
                 "Checking achievements...", ephemeral=True
             )  # type: discord.Interaction
-            ffxiv_id = bot.get_user_ffxiv_id(interaction.user.id)
+            ffxiv_id = user_data.ffxiv_id
             has_mount = False if mount_id is None else bot.validate_mount(ffxiv_id, mount_id)
             has = has_mount or bot.user_has_achievement(
                 ffxiv_id, achievement_id

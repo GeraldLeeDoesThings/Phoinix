@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import globals
+from db import get_session
+from query import get_by_discord_id
 from utils import generate_button, schedule_task, wait_and_clear
 from const import *
 import discord
@@ -360,11 +362,12 @@ class RoleSelectView(discord.ui.View):
             await resp.send_message("You are already in this run!", ephemeral=True)
             return
         if self.group.can_add(role):
+            with get_session() as session:
+                user = get_by_discord_id(session, interaction.user.id)
+                user_name = user.ffxiv_name if user is not None else interaction.user.name
             self.group.add_member(
                 RunMember(
-                    globals.verification_map.get(
-                        interaction.user.id, {"name": interaction.user.name}
-                    )["name"],
+                    user_name,
                     role,
                     interaction.user.id,
                 )

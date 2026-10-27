@@ -1,98 +1,24 @@
 from datetime import timezone
-
 import globals
-
 import asyncio
 import ba_recruiting
-import bs4
-from const import *
-import datetime
-import discord
-import json
-import os
-import re
-import requests
-import secrets
-import threading
-from typing import *
+from db import get_session
+from query import register_user, get_user_ffxiv_name_server, get_by_ffxiv_name
 from utils import *
-import uuid
 from urllib.parse import urlparse, urlunparse
 from verification import *
 
 
-def known_discord_id(id: int) -> bool:
-    return globals.verification_map.get(id, None) is not None
-
-
-def get_user_token(id: int) -> str:
-    if known_discord_id(id):
-        return globals.verification_map[id]["token"]
-    else:
-        return secrets.token_urlsafe(8)
-
-
-def get_user_ffxiv_id(id: int) -> Optional[int]:
-    if known_discord_id(id):
-        return globals.verification_map[id]["id"]
-    return None
-
-
-def get_user_ffxiv_name_server(id: int) -> Optional[Tuple[str, str]]:
-    if known_discord_id(id):
-        maybe_name = globals.verification_map[id]["name"]
-        if maybe_name is None:
-            name_server_pair = extract_name_server(globals.verification_map[id]["id"])
-            if name_server_pair is None:
-                return None
-            name, server = name_server_pair
-            globals.verification_map[id]["name"] = name
-            globals.verification_map[id]["server"] = server
-            return name, server
-        else:
-            return (
-                globals.verification_map[id]["name"],
-                globals.verification_map[id]["server"],
-            )
-    return None
-
-
-async def register_user(did: int, name: str, server: str, cid: Optional[int] = None) -> bool:
-    search = lodestone_search(name, server) if cid is None else {
-        "id": cid,
-        "name": name,
-        "server": server,
-    }
-    if search is None:
-        return False
-    search["valid"] = False
-    search["token"] = get_user_token(did)
-    globals.verification_map[did] = search
-    return True
-
-
 async def force_register_user(did: int, fid: int, name: str, server: str):
-    globals.verification_map[did] = {
-        "id": fid,
-        "name": name,
-        "server": server,
-        "valid": False,
-        "token": get_user_token(did),
-    }
-
-
-@delayed(delay_secs=3600)
-async def backup_dbs():
-    while True:
-        with open("data/verification_map.json", "w") as dumpfile:
-            json.dump(globals.verification_map, dumpfile, indent=4)
-        with open("data/ba_run_post_map.json", "w") as dumpfile:
-            to_save = {}
-            for key in globals.ba_run_post_map.keys():
-                to_save[str(key)] = globals.ba_run_post_map[key].to_dict()
-            json.dump(to_save, dumpfile, indent=4)
-
-        await asyncio.sleep(3600)
+    with get_session() as session:
+        register_user(
+            session,
+            discord_id=did,
+            ffxiv_name=name,
+            ffxiv_server=server,
+            ffxiv_id=fid,
+            force=True,
+        )
 
 
 class PhoinixBot(discord.Bot):
@@ -366,7 +292,6 @@ class PhoinixBot(discord.Bot):
         await self.compute_reaction_bindings()
         await self.compute_guide_bindings()
         if self.first_ready:
-            load_verification_map()
             load_ba_run_map(self)
             print("Adding verification view")
             self.add_view(VerificationView(bot))
@@ -403,7 +328,6 @@ class PhoinixBot(discord.Bot):
                         )
             self.first_ready = False
             schedule_task(self.unset_deletion_notification_debounce())
-            schedule_task(backup_dbs())
 
     async def on_message(self, message: discord.Message):
         id = message.channel.id
@@ -544,7 +468,8 @@ class PhoinixBot(discord.Bot):
             del globals.ba_run_post_map[payload.message_id]
 
     async def fix_name(self, member: discord.Member):
-        nspair = get_user_ffxiv_name_server(member.id)
+        with get_session() as session:
+            nspair = get_user_ffxiv_name_server(session, member.id)
         if nspair is not None:
             name, _ = nspair
             first, _ = name.split(" ")  # type: str
@@ -563,8 +488,6 @@ class PhoinixBot(discord.Bot):
             except:
                 pass
         elif command.startswith("save"):
-            with open("data/verification_map.json", "w") as dumpfile:
-                json.dump(globals.verification_map, dumpfile, indent=4)
             with open("data/ba_run_post_map.json", "w") as dumpfile:
                 to_save = {}
                 for key in globals.ba_run_post_map.keys():
@@ -638,16 +561,21 @@ async def summonverify(ctx: discord.ApplicationContext):
 
 @bot.user_command(name="Get Name/Server", default_member_permissions=discord.Permissions(kick_members=True))
 async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Member):
-    if known_discord_id(member.id):
-        warning = (
-            ""
-            if globals.verification_map[member.id]["valid"]
-            else "WARNING [POTENTIALLY INVALID NAME]: "
-        )
-        name, server = get_user_ffxiv_name_server(member.id)
-        await ctx.response.send_message(f"{warning}{name} @ {server}", ephemeral=True)
-    else:
-        await ctx.response.send_message("That user is not registered.", ephemeral=True)
+    with get_session() as session:
+        user = get_by_discord_id(session, member.id)
+        if user is not None:
+            warning = (
+                ""
+                if user.valid
+                else "WARNING [POTENTIALLY INVALID NAME]: "
+            )
+            name_server_pair = get_user_ffxiv_name_server(session, user.discord_id)
+            if name_server_pair is None:
+                await ctx.response.send_message("Failed to retrieve name and server for user.", ephemeral=True)
+            else:
+                await ctx.response.send_message(f"{warning}{user.ffxiv_name} @ {user.ffxiv_server}", ephemeral=True)
+        else:
+            await ctx.response.send_message("That user is not registered.", ephemeral=True)
 
 
 @bot.message_command(name="Register as BA Recruiting Post")
@@ -676,12 +604,16 @@ async def register_ba_recruiting(
                     "Building Roster Message...", reference=message.to_reference()
                 )
 
+                with get_session() as session:
+                    user = get_by_discord_id(session, author.id)
+                    host_name = user.ffxiv_name if user is not None else author.display_name
+
                 run = ba_recruiting.BARun(
                     id=message.id,
                     channel_id=message.channel.id,
                     bot=bot,
                     roster_embed_id=roster_message.id,
-                    host=globals.verification_map[author.id]["name"],
+                    host=host_name,
                     host_id=message.author.id,
                     icon=author.display_avatar.url,
                     password=None,
@@ -711,28 +643,23 @@ async def register_ba_recruiting(
 async def search(
     ctx: discord.ApplicationContext, name_regex: str, server: Optional[str] = None
 ):
-    try:
-        regex = re.compile(name_regex)
-    except re.error:
-        await ctx.response.send_message("Bad Regex", ephemeral=True)
-        return
-    finds = []  # type: List[Tuple[str, str, discord.Member]]
     await ctx.response.defer(ephemeral=True)
-    foundcount = 0
-    for did in globals.verification_map:
+
+    with get_session() as session:
+        users = get_by_ffxiv_name(session, name_regex, server)
+
+    finds: List[Tuple[str, str, discord.Member]] = []
+    for user in users:
         warning = (
             ""
-            if globals.verification_map[did]["valid"]
+            if user.valid
             else "WARNING [POTENTIALLY INVALID NAME]: "
         )
-        if foundcount == MAX_SEARCH_VALUES:
-            break
-        name, fserver = get_user_ffxiv_name_server(did)
-        if regex.search(name) is not None and (server is None or server in fserver):
-            fmember = await bot.fetch_member(did)
-            if fmember:
-                finds.append((warning + name, fserver, fmember))
-                foundcount += 1
+        member = await bot.fetch_member(user.discord_id)
+        finds.append(
+            (warning + user.ffxiv_name, user.ffxiv_server, member)
+        )
+
     if len(finds) == 0:
         await ctx.send_followup("Did not find anyone.", ephemeral=True)
     else:
@@ -864,7 +791,7 @@ async def botinfo(
     author = ctx.author  # type: discord.Member
     if ROLE_ID_MAP["Admin"] in set(role.id for role in author.roles):
         await ctx.respond(
-            f"There are {len(asyncio.all_tasks())} running.\nThere are {len(globals.verification_map)} users registered.\n",
+            f"There are {len(asyncio.all_tasks())} running.\n",
             ephemeral=True,
         )
     else:
