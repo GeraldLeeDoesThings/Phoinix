@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from secrets import token_urlsafe
+from sqlalchemy.orm import Session
 
 import bs4
 from tenacity import retry, stop_after_attempt, stop_after_delay, wait_fixed, retry_if_result
@@ -18,7 +19,7 @@ import requests
 import types
 from typing import *
 
-from query import get_user_token
+from query import get_user_token, commit_user, get_by_discord_id
 
 if TYPE_CHECKING:
     from bot import PhoinixBot
@@ -332,3 +333,49 @@ def validate_mount(ffxiv_id: int, mount_id: str) -> bool:
         )
         is not None
     )
+
+
+def get_user_ffxiv_name_server(session: Session, discord_id: int) -> Optional[Tuple[str, str]]:
+    user = get_by_discord_id(session, discord_id)
+    if user is None or user.ffxiv_id is None:
+        return None
+
+    if user.ffxiv_name is None or user.ffxiv_server is None:
+        name_server_pair = extract_name_server(user.ffxiv_id)
+        if name_server_pair is None:
+            return None
+        name, server = name_server_pair
+        user.ffxiv_name = name
+        user.ffxiv_server = server
+        commit_user(session, user)
+        return name, server
+    else:
+        return user.ffxiv_name, user.ffxiv_server
+
+
+def register_user(
+    session: Session,
+    discord_id: int,
+    ffxiv_name: str,
+    ffxiv_server: str,
+    ffxiv_id: Optional[int] = None,
+    force: bool = False,
+) -> bool:
+    user = User(
+        discord_id=discord_id,
+        ffxiv_name=ffxiv_name,
+        ffxiv_server=ffxiv_server,
+        valid=False,
+        token=get_user_token(session, discord_id),
+    )
+
+    if not force:
+        user.ffxiv_id = ffxiv_id
+        if ffxiv_id is None:
+            search = lodestone_search(ffxiv_name, ffxiv_server)
+            if search is None:
+                return False
+            user.ffxiv_id = search["id"]
+
+    commit_user(session, user)
+    return True
