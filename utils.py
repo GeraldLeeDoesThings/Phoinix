@@ -246,12 +246,17 @@ def user_has_token_in_profile(
     return token in str(profile)
 
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_fixed(10),
+    retry_error_callback=lambda error_state: None,
+)
 def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]:
     ACHIEVEMENT_BASE_URL = (
         f"{LODESTONE_BASE_URL}{ffxiv_id}{LODESTONE_ACHIEVEMENT_BASE_URL}"
     )
     req = API_SESSION.get(f"{ACHIEVEMENT_BASE_URL}{achievement_code}/")
-    if req.status_code == 404:
+    if req.status_code == 404 or len(req.content) == 0:
         return None  # signals hidden achievements
     return (
         len(
