@@ -165,7 +165,7 @@ def extract_name_server(
     character_id: int, req: Optional[requests.Response] = None
 ) -> Optional[Tuple[str, str]]:
     request = req if req is not None else API_SESSION.get(f"{LODESTONE_BASE_URL}{character_id}")
-    if request.status_code == 404:
+    if request.status_code == 404 or len(request.content) == 0:
         return None
     result = bs4.BeautifulSoup(
         request.content.decode(),
