@@ -165,7 +165,7 @@ def extract_name_server(
     character_id: int, req: Optional[requests.Response] = None
 ) -> Optional[Tuple[str, str]]:
     request = req if req is not None else API_SESSION.get(f"{LODESTONE_BASE_URL}{character_id}")
-    if request.status_code == 404 or len(request.content) == 0:
+    if request.status_code == 404:
         return None
     result = bs4.BeautifulSoup(
         request.content.decode(),
@@ -256,8 +256,10 @@ def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]
         f"{LODESTONE_BASE_URL}{ffxiv_id}{LODESTONE_ACHIEVEMENT_BASE_URL}"
     )
     req = API_SESSION.get(f"{ACHIEVEMENT_BASE_URL}{achievement_code}/")
-    if req.status_code == 404 or len(req.content) == 0:
+    if req.status_code == 404:
         return None  # signals hidden achievements
+    elif len(req.content) == 0:
+        raise ValueError("Got empty response from Lodestone!")
     return (
         len(
             bs4.BeautifulSoup(req.content.decode(), "html.parser").find_all(
