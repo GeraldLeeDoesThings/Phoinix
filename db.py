@@ -11,7 +11,11 @@ engine_url = URL.create(
     password=db_token,
     database="GeraldPython$Phoinix",
 )
-engine = create_engine(engine_url)
+engine = create_engine(
+    engine_url,
+    pool_pre_ping=True,
+    pool_recycle=120,
+)
 
 
 def get_session():
