@@ -56,7 +56,7 @@ class VerificationModal(discord.ui.DesignerModal):
             ).replace("’", "'")
             server = server_field.value.split(" ")[0].capitalize()
 
-            valid_server, suggested_server = validate_server(server)
+            valid_server, suggested_server = await validate_server(server)
 
             if not valid_server:
                 await fakedefer.edit_original_response(
@@ -82,7 +82,7 @@ class VerificationModal(discord.ui.DesignerModal):
                             content=f"Expected '/character/CHARACTER_ID' in URL, but found non-numeric ID: '{part}'"
                         )
                         return
-                    name_server_pair = extract_name_server(character_id)
+                    name_server_pair = await extract_name_server(character_id)
                 prev_part_is_character = part == "character"
 
             if name_server_pair is None:
@@ -98,7 +98,7 @@ class VerificationModal(discord.ui.DesignerModal):
             return
 
         with get_session() as session:
-            if register_user(
+            if await register_user(
                 session,
                 discord_id=interaction.user.id,
                 ffxiv_name=name,
@@ -160,7 +160,7 @@ class VerificationView(discord.ui.View):
                 member = await self.bot.fetch_member(interaction.user.id)
                 await member.add_roles(discord.Object(ROLE_ID_MAP["Member"]))
                 return
-            result = bot.full_validate(user)
+            result = await bot.full_validate(user)
             if type(result) == str:
                 await response.edit_original_response(content=result)
             else:
@@ -287,7 +287,7 @@ class VerificationView(discord.ui.View):
                 needed_achievement = ACHIEVEMENT_ID_MAP[mapping["needed achievement"]]
                 given_role = ROLE_ID_MAP[mapping["given role"]]
 
-                if bot.user_has_achievement(ffxiv_id, needed_achievement):
+                if await bot.user_has_achievement(ffxiv_id, needed_achievement):
                     await member.add_roles(discord.Object(given_role))
                     await interaction.response.send_message(
                         "Role added!",
@@ -338,8 +338,8 @@ class VerificationView(discord.ui.View):
                 "Checking achievements...", ephemeral=True
             )  # type: discord.Interaction
             ffxiv_id = user_data.ffxiv_id
-            has_mount = False if mount_id is None else bot.validate_mount(ffxiv_id, mount_id)
-            has = has_mount or bot.user_has_achievement(
+            has_mount = False if mount_id is None else await bot.validate_mount(ffxiv_id, mount_id)
+            has = has_mount or await bot.user_has_achievement(
                 ffxiv_id, achievement_id
             )
             if has is None:

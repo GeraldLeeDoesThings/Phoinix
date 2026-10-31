@@ -11,7 +11,7 @@ from verification import *
 
 async def force_register_user(did: int, fid: int, name: str, server: str):
     with get_session() as session:
-        register_user(
+        await register_user(
             session,
             discord_id=did,
             ffxiv_name=name,
@@ -469,7 +469,7 @@ class PhoinixBot(discord.Bot):
 
     async def fix_name(self, member: discord.Member):
         with get_session() as session:
-            nspair = get_user_ffxiv_name_server(session, member.id)
+            nspair = await get_user_ffxiv_name_server(session, member.id)
         if nspair is not None:
             name, _ = nspair
             first, _ = name.split(" ")  # type: str
@@ -569,7 +569,7 @@ async def whois_user_command(ctx: discord.ApplicationContext, member: discord.Me
                 if user.valid
                 else "WARNING [POTENTIALLY INVALID NAME]: "
             )
-            name_server_pair = get_user_ffxiv_name_server(session, user.discord_id)
+            name_server_pair = await get_user_ffxiv_name_server(session, user.discord_id)
             if name_server_pair is None:
                 await ctx.response.send_message("Failed to retrieve name and server for user.", ephemeral=True)
             else:

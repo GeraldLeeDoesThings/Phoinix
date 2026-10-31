@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+
+from httpx import Response
+
+from lodestone import make_request
 from secrets import token_urlsafe
 from sqlalchemy.orm import Session
 
 import bs4
-from tenacity import retry, stop_after_attempt, stop_after_delay, wait_fixed, retry_if_result
-
 from const import *
 import datetime
 import discord
@@ -15,7 +17,6 @@ import json
 from models import User
 import nltk
 import re
-import requests
 import types
 from typing import *
 
@@ -32,15 +33,6 @@ MAX_RATE = 10
 CALLS_REMAINING = MAX_RATE
 CALL_LOCK = asyncio.Lock()
 HAS_CALLS = asyncio.Condition(CALL_LOCK)
-API_SESSION = requests.Session()
-# API_SESSION.params["private_key"] = xivapikey
-API_SESSION.headers.update(
-    {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://google.com"
-    }
-)
 
 
 async def consume_limited_call():
@@ -120,7 +112,7 @@ def extract_react_bindings(content: str) -> List[Tuple[discord.PartialEmoji, int
     ]
 
 
-def lodestone_search(
+async def lodestone_search(
     name: str,
     server: str,
 ) -> Optional[Dict[str, Union[str, int]]]:
@@ -128,7 +120,7 @@ def lodestone_search(
     numPages = 1
 
     while page <= min(numPages, 5):
-        request = API_SESSION.get(
+        request = await make_request(
             LODESTONE_BASE_URL, params={"q": "\"" + name + "\"", "page": page, "worldname": server}
         )
         result = bs4.BeautifulSoup(
@@ -156,15 +148,10 @@ def lodestone_search(
     return None
 
 
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_fixed(10),
-    retry_error_callback=lambda error_state: None,
-)
-def extract_name_server(
-    character_id: int, req: Optional[requests.Response] = None
+async def extract_name_server(
+    character_id: int, req: Optional[Response] = None
 ) -> Optional[Tuple[str, str]]:
-    request = req if req is not None else API_SESSION.get(f"{LODESTONE_BASE_URL}{character_id}")
+    request = req if req is not None else await make_request(f"{LODESTONE_BASE_URL}{character_id}")
     if request.status_code == 404:
         return None
     result = bs4.BeautifulSoup(
@@ -174,28 +161,28 @@ def extract_name_server(
     name = result.find("p", "frame__chara__name")
     if name is None:
         print(f"Got strange response from Lodestone: {request.content}")
-        raise ValueError("Unexpected response from Lodestone!")
+        return None
     else:
         name = name.text
 
     server = result.find("p", "frame__chara__world")
     if server is None:
         print(f"Got strange response from Lodestone: {request.content}")
-        raise ValueError("Unexpected response from Lodestone!")
+        return None
     else:
         server = server.text
     return name, server
 
 
-def full_validate(
+async def full_validate(
     user: User
 ) -> User | str:
 
     if user.ffxiv_id is None:
         return "User has no associated FFXIV character id!"
 
-    response = API_SESSION.get(f"{LODESTONE_BASE_URL}{user.ffxiv_id}")
-    name_server_pair = extract_name_server(user.ffxiv_id, response)
+    response = await make_request(f"{LODESTONE_BASE_URL}{user.ffxiv_id}")
+    name_server_pair = await extract_name_server(user.ffxiv_id, response)
     if name_server_pair is None:
         return f"Failed to retrieve name and server for character with ID {user.ffxiv_id}. Try registering again."
 
@@ -214,7 +201,7 @@ def full_validate(
     if user.token is None:
         user.token = token_urlsafe(8)
 
-    if not user_has_token_in_profile(user.ffxiv_id, user.token, response):
+    if not await user_has_token_in_profile(user.ffxiv_id, user.token, response):
         return (
             f"Token, `{user.token}` (can be copied from {ECHO_TOKEN_URL}{user.token}), not found"
             f" in character profile at {LODESTONE_BASE_URL}{user.ffxiv_id}\n Additionally, **ensure your lodestone is not set to private.**"
@@ -233,10 +220,10 @@ async def refresh_calls_loop():
     schedule_task(refresh_calls_loop())
 
 
-def user_has_token_in_profile(
-    ffxiv_id: int, token: str, resp: Optional[requests.Response] = None
+async def user_has_token_in_profile(
+    ffxiv_id: int, token: str, resp: Optional[Response] = None
 ) -> bool:
-    resp = resp if resp is not None else API_SESSION.get(f"{LODESTONE_BASE_URL}{ffxiv_id}")
+    resp = resp if resp is not None else await make_request(f"{LODESTONE_BASE_URL}{ffxiv_id}")
     profile = bs4.BeautifulSoup(resp.content.decode(), "html.parser",).find_all(
         "div", "character__selfintroduction"
     )[
@@ -246,20 +233,16 @@ def user_has_token_in_profile(
     return token in str(profile)
 
 
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_fixed(10),
-    retry_error_callback=lambda error_state: None,
-)
-def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]:
+async def user_has_achievement(ffxiv_id: int, achievement_code: int) -> Optional[bool]:
     ACHIEVEMENT_BASE_URL = (
         f"{LODESTONE_BASE_URL}{ffxiv_id}{LODESTONE_ACHIEVEMENT_BASE_URL}"
     )
-    req = API_SESSION.get(f"{ACHIEVEMENT_BASE_URL}{achievement_code}/")
+    req = await make_request(f"{ACHIEVEMENT_BASE_URL}{achievement_code}/")
     if req.status_code == 404:
         return None  # signals hidden achievements
     elif len(req.content) == 0:
-        raise ValueError("Got empty response from Lodestone!")
+        print("Weird response from Lodestone")
+        raise False
     return (
         len(
             bs4.BeautifulSoup(req.content.decode(), "html.parser").find_all(
@@ -326,9 +309,8 @@ def validate_server(server: str) -> (bool, str):
     return False, f"'{server}' is not a server. Did you mean '{suggestion}'?"
 
 
-def validate_mount(ffxiv_id: int, mount_id: str) -> bool:
-
-    req = API_SESSION.get(f"{LODESTONE_BASE_URL}{ffxiv_id}/mount/")
+async def validate_mount(ffxiv_id: int, mount_id: str) -> bool:
+    req = await make_request(f"{LODESTONE_BASE_URL}{ffxiv_id}/mount/")
     parsed = bs4.BeautifulSoup(req.text, "html.parser")
     return (
         parsed.find(
@@ -342,13 +324,13 @@ def validate_mount(ffxiv_id: int, mount_id: str) -> bool:
     )
 
 
-def get_user_ffxiv_name_server(session: Session, discord_id: int) -> Optional[Tuple[str, str]]:
+async def get_user_ffxiv_name_server(session: Session, discord_id: int) -> Optional[Tuple[str, str]]:
     user = get_by_discord_id(session, discord_id)
     if user is None or user.ffxiv_id is None:
         return None
 
     if user.ffxiv_name is None or user.ffxiv_server is None:
-        name_server_pair = extract_name_server(user.ffxiv_id)
+        name_server_pair = await extract_name_server(user.ffxiv_id)
         if name_server_pair is None:
             return None
         name, server = name_server_pair
@@ -360,7 +342,7 @@ def get_user_ffxiv_name_server(session: Session, discord_id: int) -> Optional[Tu
         return user.ffxiv_name, user.ffxiv_server
 
 
-def register_user(
+async def register_user(
     session: Session,
     discord_id: int,
     ffxiv_name: str,
@@ -379,7 +361,7 @@ def register_user(
     if not force:
         user.ffxiv_id = ffxiv_id
         if ffxiv_id is None:
-            search = lodestone_search(ffxiv_name, ffxiv_server)
+            search = await lodestone_search(ffxiv_name, ffxiv_server)
             if search is None:
                 return False
             user.ffxiv_id = search["id"]
