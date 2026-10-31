@@ -182,6 +182,9 @@ async def full_validate(
         return "User has no associated FFXIV character id!"
 
     response = await make_request(f"{LODESTONE_BASE_URL}{user.ffxiv_id}")
+    if response is None:
+        return f"Failed to reach the Lodestone!"
+
     name_server_pair = await extract_name_server(user.ffxiv_id, response)
     if name_server_pair is None:
         return f"Failed to retrieve name and server for character with ID {user.ffxiv_id}. Try registering again."

@@ -19,10 +19,11 @@ def __get_async_client() -> AsyncClient:
     wait=wait_fixed(15),
     retry_error_callback=lambda error_state: None,
 )
-async def make_request(url: str, params: Optional[dict[str, str | int]]) -> Response:
+async def make_request(url: str, params: Optional[dict[str, str | int]] = None) -> Response:
     async with __get_async_client() as client:
         result = await client.get(url, params=params)
         if len(result.content) == 0:
+            print("Got blank response from the Lodestone!")
             raise ValueError("Got blank response from the Lodestone!")
         return result
 

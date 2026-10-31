@@ -56,7 +56,7 @@ class VerificationModal(discord.ui.DesignerModal):
             ).replace("’", "'")
             server = server_field.value.split(" ")[0].capitalize()
 
-            valid_server, suggested_server = await validate_server(server)
+            valid_server, suggested_server = validate_server(server)
 
             if not valid_server:
                 await fakedefer.edit_original_response(
